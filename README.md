@@ -17,15 +17,19 @@ The skill creates a `migration-manifest.yaml` that tracks progress, detected rep
 
 ## Installation
 
-Clone this repo and symlink (or copy) the skill into your project:
+Clone (or symlink) this repo into your project's `.claude/skills/` directory:
 
 ```bash
-# Option A: symlink
-ln -s /path/to/gitlab-to-github-migration/.claude/skills/gitlab-to-github \
+# Option A: git clone
+git clone https://github.com/charliallen/gitlab-to-github-migration.git \
       your-project/.claude/skills/gitlab-to-github
 
-# Option B: copy
-cp -r /path/to/gitlab-to-github-migration/.claude/skills/gitlab-to-github \
+# Option B: git submodule
+git submodule add https://github.com/charliallen/gitlab-to-github-migration.git \
+      your-project/.claude/skills/gitlab-to-github
+
+# Option C: symlink (if you already have it cloned elsewhere)
+ln -s /path/to/gitlab-to-github-migration \
       your-project/.claude/skills/gitlab-to-github
 ```
 
@@ -46,7 +50,6 @@ These are set in the manifest template and SKILL.md — adjust for your org.
 ## Repo structure
 
 ```
-.claude/skills/gitlab-to-github/
 ├── SKILL.md              # Main skill document (loaded by Claude Code)
 ├── references/           # Per-phase detailed guidance
 │   ├── phase-1-cleanup.md
@@ -58,12 +61,11 @@ These are set in the manifest template and SKILL.md — adjust for your org.
 ├── templates/
 │   ├── migration-manifest.yaml   # Manifest template
 │   └── POLICY.md                 # AIPCC commit guidelines
-└── evals/
-    └── evals.json                # Eval scenario definitions
-
-benchmarks/               # Eval results (not needed for end users)
-├── iteration-1/
-└── iteration-2/
+├── evals/
+│   └── evals.json                # Eval scenario definitions
+└── benchmarks/                   # Eval results (not needed for end users)
+    ├── iteration-1/
+    └── iteration-2/
 ```
 
 ## License
