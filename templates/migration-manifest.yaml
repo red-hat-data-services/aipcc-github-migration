@@ -3,11 +3,11 @@
 # This file tracks migration state across sessions.
 
 repo: REPO_NAME
-source_gitlab: redhat/rhel-ai/ci-cd/REPO_NAME
-target_github_org: red-hat-data-services
-target_github_repo: red-hat-data-services/REPO_NAME
-quay_org: aipcc-cicd
-quay_repo: aipcc-cicd/REPO_NAME
+source_gitlab: GITLAB_PATH
+target_github_org: opendatahub-io
+target_github_repo: opendatahub-io/REPO_NAME
+quay_org: ""    # populated by Phase 0 if container push detected
+quay_repo: ""   # populated by Phase 0 if container push detected
 jira_ticket: ""
 wave: 1  # 1 (simple/no CI), 2 (real CI), 3 (complex multi-arch/cross-repo)
 
@@ -28,24 +28,13 @@ detected:
   github_state: absent  # absent | empty | has_content
   quay_repo_exists: false
   gitlab_self_references: []  # files containing gitlab>REPO_PATH or similar self-referencing patterns
+  is_shared_preset: false     # true if repo is consumed by other repos as preset/config/template
   branch_count: 0
   branches_to_delete: []
   branches_to_keep: []
   branches_to_ask: []
 
-maintainers:
-  - adrianriobo
-  - charliallen
-  - deekay2310
-  - gnaponie
-  - jangel97
-  - jrusz
-  - ktdreyer
-  - ppitonak
-  - rishupk
-  - srija-ganguly
-  - Victoremepunto
-  - XiyangDong
+maintainers: []  # GitHub usernames — populated at init from team roster
 
 phases:
   cleanup:

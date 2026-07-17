@@ -73,18 +73,18 @@ Next step: <first incomplete item in active phase>
 ### 2. Init (New Migration)
 
 Ask two questions:
-1. "Which repo are you migrating?" (e.g., `central-linter`, `aipcc-claudio`)
-2. "Which GitHub org?" (default: `red-hat-data-services`, alternative: `opendatahub-io`)
+1. "What's the GitLab repo URL or path?" (e.g., `gitlab.com/redhat/rhel-ai/ci-cd/central-linter` or just `redhat/rhel-ai/ci-cd/central-linter`)
+2. "Which GitHub org?" (default: `opendatahub-io`)
 
 Then:
+- Parse the GitLab input: strip `https://gitlab.com/` prefix if present, extract the repo name (last path segment) and full GitLab path
 - Read the manifest template from `templates/migration-manifest.yaml` (relative to this skill)
 - Fill in the template with:
-  - `repo`: the repo name
-  - `source_gitlab`: `redhat/rhel-ai/ci-cd/<repo>` (AIPCC default prefix)
+  - `repo`: the repo name (last segment of the GitLab path)
+  - `source_gitlab`: the full GitLab project path
   - `target_github_org`: user's choice
   - `target_github_repo`: `<org>/<repo>`
-  - `quay_org`: `aipcc-cicd`
-  - `quay_repo`: `aipcc-cicd/<repo>`
+  - Leave `quay_org` and `quay_repo` empty — Phase 0 populates them if container push is detected
 - Create `.claude/migrations/<repo>/` directory
 - Write the populated manifest to `.claude/migrations/<repo>/manifest.yaml`
 - Immediately run Phase 0
@@ -93,38 +93,58 @@ Then:
 
 Automated scan — no user input needed. Populate the `detected.*` fields in the manifest.
 
-**Checks to run:**
+**Prefer local clone, fall back to GitLab API.** If the repo is cloned locally (e.g., as a
+git submodule in `src/`), scan the filesystem directly — it's faster and doesn't require API auth.
+Only use `glab api` if no local clone is available.
+
+**Local clone checks:**
 
 ```bash
-# GitLab repo accessible?
-glab api projects/$(echo "$SOURCE_GITLAB" | sed 's|/|%2F|g') --method GET
+# Locate the repo — check src/<repo>, or ask the user
+REPO_DIR="src/$REPO_NAME"
 
-# .gitlab-ci.yml exists?
-glab api "projects/$PROJECT_ID/repository/files/.gitlab-ci.yml?ref=main" --method GET
-
-# LICENSE file?
-glab api "projects/$PROJECT_ID/repository/files/LICENSE?ref=main" --method GET
-
-# POLICY.md?
-glab api "projects/$PROJECT_ID/repository/files/POLICY.md?ref=main" --method GET
-
-# .tekton/ directory?
-glab api "projects/$PROJECT_ID/repository/tree?path=.tekton&ref=main" --method GET
+# File checks
+test -f "$REPO_DIR/.gitlab-ci.yml"    # has_ci
+test -f "$REPO_DIR/LICENSE"           # has_license (parse for type)
+test -f "$REPO_DIR/POLICY.md"         # has_policy_md
+test -d "$REPO_DIR/.tekton"           # has_tekton
 
 # Branch list
-glab api "projects/$PROJECT_ID/repository/branches?per_page=100" --method GET
+git -C "$REPO_DIR" branch -r --list 'origin/*' | sed 's|origin/||'
+```
 
+**GitLab API fallback** (if no local clone):
+
+```bash
+PROJECT_ID=$(echo "$SOURCE_GITLAB" | sed 's|/|%2F|g')
+
+glab api "projects/$PROJECT_ID/repository/files/.gitlab-ci.yml?ref=main" --method GET
+glab api "projects/$PROJECT_ID/repository/files/LICENSE?ref=main" --method GET
+glab api "projects/$PROJECT_ID/repository/files/POLICY.md?ref=main" --method GET
+glab api "projects/$PROJECT_ID/repository/tree?path=.tekton&ref=main" --method GET
+glab api "projects/$PROJECT_ID/repository/branches?per_page=100" --method GET
+```
+
+**External checks** (always run):
+
+```bash
 # GitHub repo state
 gh repo view "$TARGET_GITHUB_REPO" --json isEmpty 2>/dev/null
 
-# Quay repo exists?
-curl -sf "https://quay.io/api/v1/repository/$QUAY_REPO" >/dev/null 2>&1
+# Quay repo exists? (only if has_container_push is true)
+curl -sf "https://quay.io/api/v1/repository/$QUAY_ORG/$REPO_NAME" >/dev/null 2>&1
 ```
 
 **If `.gitlab-ci.yml` exists**, parse it for:
 - `buildah push` / `podman push` / `skopeo copy` → `detected.has_container_push: true`
 - `--platform` / `--manifest` / architecture matrix → `detected.has_multi_arch: true`
 - `include: project:` → populate `detected.includes_from[]`
+
+**If `has_container_push` is true**, populate the Quay fields in the manifest:
+- `quay_org`: `aipcc-cicd` (AIPCC default — ask user to confirm)
+- `quay_repo`: `<quay_org>/<repo>`
+- Run the Quay check: `curl -sf "https://quay.io/api/v1/repository/$QUAY_ORG/$REPO_NAME"`
+- Set `detected.quay_repo_exists` accordingly
 
 **Scan for self-referencing GitLab paths** in all non-binary files:
 ```bash
@@ -134,6 +154,11 @@ grep -rl "gitlab>.*$REPO_NAME\|gitlab\.com/.*$SOURCE_GITLAB" . \
   --exclude-dir=.git
 ```
 Populate `detected.gitlab_self_references[]` with the matched file paths.
+
+**Check for shared-preset/config pattern** — if the repo contains Renovate presets (`extends`
+patterns in JSON files), npm packages, PyPI packages, or CI templates consumed by other repos,
+set `detected.is_shared_preset: true`. This flags downstream coordination needs in Phase 1
+(self-reference rewriting) and Phase 6 (announcement).
 
 **Branch classification** (informational — branch cleanup happens post-announce):
 - **Keep**: `main`, `release-*`, `rhel-*`, `rhoai-*`
@@ -156,6 +181,7 @@ POLICY.md:       yes/no
 GitHub repo:     absent / empty / has content
 Quay repo:       exists / missing
 Self-references:  N files with gitlab> paths (list them)
+Shared preset:   yes/no (if yes, downstream repos need coordinated updates)
 Branches:        N total (K keep, D delete, A to review)
 ```
 
@@ -165,9 +191,8 @@ overlaps with Phase 1 cleanup:
 ```
 ⚠ GitHub repo does not exist yet.
 
-For opendatahub-io: submit the repo request Google Form
+Submit the repo request Google Form
   (ask the team chat if you don't have the URL yet).
-For red-hat-data-services: ask Ken Dreyer to create it.
 
 Submit now — approval can take hours/days, and Phase 1 cleanup
 runs in parallel.
@@ -186,6 +211,8 @@ For each phase (cleanup → github_setup → quay_oidc → ci → mirroring → 
    - `detected.has_license == true && detected.license_type == "Apache-2.0"` → skip license item in `cleanup`
    - `detected.has_policy_md == true` → skip POLICY.md item in `cleanup`
    - `detected.gitlab_self_references` is empty → skip "Update GitLab self-references" item in `cleanup`
+   - `detected.has_container_push == false` → skip "Scope id-token to push job" in `ci` phase
+   - `detected.is_shared_preset == true` → include downstream action block in `announce` template
    - Mark skipped phases/items in the manifest with `status: skipped` and a `reason`
 
 2. **Load the phase reference file** — Read the corresponding file from `references/`:
@@ -223,9 +250,9 @@ These are baked into the manifest template. Override at init if needed.
 
 | Setting | Default |
 |---------|---------|
-| GitLab path prefix | `redhat/rhel-ai/ci-cd/` |
-| Target GitHub org | `red-hat-data-services` |
-| Quay org | `aipcc-cicd` |
+| GitLab path | asked at init |
+| Target GitHub org | `opendatahub-io` |
+| Quay org | `aipcc-cicd` (only if container push detected) |
 | License | Apache-2.0 |
 | App-interface role | `rhoai/dev` |
 

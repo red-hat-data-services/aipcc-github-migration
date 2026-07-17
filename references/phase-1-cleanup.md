@@ -11,7 +11,7 @@ All changes happen on a feature branch in the GitLab repo. One commit per change
 
 > **Note:** Branch cleanup on GitLab is deferred to post-announce. Since GitHub becomes canonical via mirroring, only the branches pushed to GitHub matter. Stale GitLab-only branches are cosmetic noise on a read-only mirror.
 - **[automatable] Commit with Signed-off-by** — All commits in this phase must use `git commit -s` to add the `Signed-off-by:` trailer.
-- **[human] MR submitted and merged** — User opens the MR on GitLab, gets review (typically from Xiang/XiyangDong for central-linter), and merges. Wait for this before proceeding.
+- **[human] MR submitted and merged** — User opens the MR on GitLab, gets review, and merges. Wait for this before proceeding.
 
 ## Automation Details
 
@@ -71,6 +71,28 @@ Show the user a diff of each file before committing. Some references may be inte
 cross-platform (e.g., a GitLab-hosted preset consumed by GitLab-side repos) — ask before changing
 those.
 
+#### Flags to raise before rewriting
+
+**`local>` vs `gitlab>` are different protocols.** `gitlab>` tells the tool to fetch from GitLab
+specifically. `local>` means "same platform I'm running on." Before rewriting `local>` paths,
+ask the user which platform the consuming tool (e.g., Renovate) targets post-migration. If the
+tool still reads from GitLab (via mirror), `local>` paths should keep the GitLab org/path.
+If the tool moves to GitHub, update to the GitHub org/repo.
+
+**Downstream blast radius.** If this repo is consumed as a shared preset or library by other
+repos, changing `gitlab>` to `github>` here will break every consumer still pointing to the old
+`gitlab>` path. Flag this to the user:
+
+```
+⚠ This repo appears to be a shared preset/config consumed by other repositories.
+  Changing gitlab> references to github> will require downstream repos to update
+  their references too. Coordinate with consuming teams before or during Phase 6
+  (Announce).
+```
+
+Detect shared-preset repos by checking for Renovate `extends` patterns, npm/PyPI package
+references, or CI `include: project:` pointing to this repo from other projects.
+
 ```bash
 git add <changed files>
 git commit -s -m "chore: update self-references from GitLab to GitHub"
@@ -80,8 +102,7 @@ git commit -s -m "chore: update self-references from GitLab to GitHub"
 
 ```bash
 glab mr create --title "Migration prep: add license, policy, cleanup branches" \
-  --description "Part of GitLab → GitHub migration (AIPCC-18266)" \
-  --assignee XiyangDong
+  --description "Part of GitLab → GitHub migration"
 ```
 
 ## Gotchas

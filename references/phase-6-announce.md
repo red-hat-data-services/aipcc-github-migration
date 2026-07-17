@@ -56,6 +56,12 @@ What didn't change:
 - Downstream GitLab CI jobs using `include: project:` still work (via mirror)
 - Container image location in Quay is unchanged
 
+[If is_shared_preset: include this block]
+Action needed for downstream repos:
+- If your renovate.json or CI config references this repo via `gitlab>` paths,
+  update to `github>` at your convenience. The GitLab mirror keeps old paths
+  working during the transition.
+
 Please update your local remotes:
   git remote set-url origin git@github.com:<target_org>/<repo>.git
 
@@ -65,7 +71,7 @@ Questions? Ping me or Ken.
 ### External reference checklist
 
 Prompt the user to check:
-- **Jira tickets**: Update the repo URL in AIPCC-18266 or the repo-specific ticket
+- **Jira tickets**: Update the repo URL in the migration ticket (check `jira_ticket` in manifest)
 - **Confluence docs**: Search for the old GitLab URL and update
 - **Slack bookmarks**: If the team has pinned repo links
 - **CI/CD references**: Any other systems pointing to the GitLab URL

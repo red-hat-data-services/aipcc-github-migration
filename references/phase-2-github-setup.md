@@ -5,8 +5,7 @@ Push the cleaned-up code from GitLab to the target GitHub org.
 ## Items
 
 - **[human] Repo exists in target org** — If `detected.github_state == "absent"`, the user needs to request the repo. The process differs by org:
-  - **opendatahub-io**: Submit the repo request Google Form (ask the team chat if you don't have the URL yet). Phase 0 should have prompted for this already.
-  - **red-hat-data-services**: Ask Ken Dreyer to create it directly.
+  Submit the repo request Google Form (ask the team chat if you don't have the URL yet). Phase 0 should have prompted for this already.
   
   Skip if repo already exists. If Phase 0 already prompted the form submission, just confirm the repo is now available: `gh repo view <target_org>/<repo> --json isEmpty 2>/dev/null`
 - **[automatable] Add github remote** — Add the GitHub repo as a second remote. Skip if `detected.github_state == "has_content"`.
