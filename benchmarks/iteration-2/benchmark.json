@@ -1,0 +1,162 @@
+{
+  "metadata": {
+    "skill_name": "gitlab-to-github",
+    "skill_path": ".claude/skills/gitlab-to-github/SKILL.md",
+    "executor_model": "claude-opus-4-6",
+    "analyzer_model": "claude-opus-4-6",
+    "timestamp": "2026-07-17T19:30:00Z",
+    "evals_run": [1, 2, 3],
+    "runs_per_configuration": 1,
+    "iteration": 2,
+    "changes_since_iteration_1": [
+      "Removed Phase 7 (gitlab_branch_cleanup) — 6 phases total",
+      "Bundled POLICY.md in templates/ — skill copies instead of Google Doc export",
+      "Added early GitHub repo request prompt in Phase 0 when github_state is absent",
+      "Added self-reference detection and skip logic",
+      "Added detailed resume dashboard format specification",
+      "Marked includes_from/included_by as future use"
+    ]
+  },
+  "runs": [
+    {
+      "eval_id": 1,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 6,
+        "failed": 0,
+        "total": 6
+      },
+      "expectations": [
+        {"text": "Creates a migration-manifest.yaml with repo set to aipcc-claudio", "passed": true, "evidence": "Manifest file created with 'repo: aipcc-claudio' on line 5"},
+        {"text": "Manifest has source_gitlab path containing aipcc-claudio", "passed": true, "evidence": "source_gitlab: redhat/rhel-ai/ci-cd/aipcc-claudio in manifest line 6"},
+        {"text": "Phase 0 assessment table is presented showing CI, container push, GitHub state, etc.", "passed": true, "evidence": "Structured assessment table with CI pipeline: yes, Container push: yes, Multi-arch: yes, GitHub repo: absent, Quay repo: exists, Self-references: 0 files"},
+        {"text": "No phases are skipped (has_ci and has_container_push are both true)", "passed": true, "evidence": "Skip Conditions table shows CI and container_push both 'NO' (not skipped). Only self-references item skipped. All 6 phases listed as pending."},
+        {"text": "Branch classification is shown with keep/delete/ask categories", "passed": true, "evidence": "Branch Classification table: 3 Keep, 2 Delete, 1 Ask"},
+        {"text": "Proceeds to Phase 1 cleanup guidance after Phase 0", "passed": true, "evidence": "Phase 1: Repo Cleanup section with 7 step-by-step items including exact git/glab commands, status dashboard, and bundled POLICY.md copy"}
+      ],
+      "notes": ["GitHub repo request prompt correctly shown. POLICY.md uses bundled copy. Self-references item skipped. 6 phases (no Phase 7)."]
+    },
+    {
+      "eval_id": 1,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.333,
+        "passed": 2,
+        "failed": 4,
+        "total": 6
+      },
+      "expectations": [
+        {"text": "Creates a migration-manifest.yaml with repo set to aipcc-claudio", "passed": false, "evidence": "No manifest file created. Produced a text plan but no persistent YAML state file."},
+        {"text": "Manifest has source_gitlab path containing aipcc-claudio", "passed": false, "evidence": "No manifest file exists."},
+        {"text": "Phase 0 assessment table is presented showing CI, container push, GitHub state, etc.", "passed": true, "evidence": "Pre-Migration Investigation section covers CI, container push, and repo state."},
+        {"text": "No phases are skipped (has_ci and has_container_push are both true)", "passed": true, "evidence": "All 6 phases listed in the migration plan."},
+        {"text": "Branch classification is shown with keep/delete/ask categories", "passed": false, "evidence": "No branch classification. Deferred to clarifying questions."},
+        {"text": "Proceeds to Phase 1 cleanup guidance after Phase 0", "passed": false, "evidence": "Stops after plan and asks 5 clarifying questions before proceeding."}
+      ],
+      "notes": ["Baseline unchanged from iteration-1."]
+    },
+    {
+      "eval_id": 2,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 6,
+        "failed": 0,
+        "total": 6
+      },
+      "expectations": [
+        {"text": "Reads the existing manifest rather than creating a new one", "passed": true, "evidence": "Response opens with 'Found the existing manifest'. No init sequence."},
+        {"text": "Shows a status summary with cleanup and github_setup marked complete", "passed": true, "evidence": "Dashboard shows Phase 1: Cleanup complete, Phase 2: GitHub Setup complete."},
+        {"text": "Does NOT re-run Phase 0 or re-initialize", "passed": true, "evidence": "No Phase 0 section. Jumps directly to status dashboard."},
+        {"text": "Identifies quay_oidc as the next phase to work on", "passed": true, "evidence": "Phase 3: Quay OIDC marked 'pending <- you are here' in dashboard."},
+        {"text": "Presents guidance for the first quay_oidc item (Create Quay repo)", "passed": true, "evidence": "All 7 Quay OIDC items listed. Create Quay repo annotated as skippable."},
+        {"text": "Notes that quay_repo_exists is true, suggesting the Quay repo step may be skippable", "passed": true, "evidence": "'Create Quay repo (skip: quay_repo_exists is true)' — next step set to 'Create org-level robot account'."}
+      ],
+      "notes": ["6 phases in dashboard. Proactive QUAY_API_TOKEN guidance. Good contextual notes about branches_to_ask and downstream dependency."]
+    },
+    {
+      "eval_id": 2,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 6,
+        "failed": 0,
+        "total": 6
+      },
+      "expectations": [
+        {"text": "Reads the existing manifest rather than creating a new one", "passed": true, "evidence": "Baseline given manifest context, correctly parses it without creating new one."},
+        {"text": "Shows a status summary with cleanup and github_setup marked complete", "passed": true, "evidence": "States both phases are done with details."},
+        {"text": "Does NOT re-run Phase 0 or re-initialize", "passed": true, "evidence": "No Phase 0 or init section."},
+        {"text": "Identifies quay_oidc as the next phase to work on", "passed": true, "evidence": "'Next phase: Quay OIDC Federation (Phase 3)'"},
+        {"text": "Presents guidance for the first quay_oidc item (Create Quay repo)", "passed": true, "evidence": "Phase 3 Items section lists all 7 items with guidance."},
+        {"text": "Notes that quay_repo_exists is true, suggesting the Quay repo step may be skippable", "passed": true, "evidence": "'detected.quay_repo_exists: true, so this step can be skipped'"}
+      ],
+      "notes": ["Baseline unchanged from iteration-1. Given manifest as context since it has no concept of manifest format without skill."]
+    },
+    {
+      "eval_id": 3,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 6,
+        "failed": 0,
+        "total": 6
+      },
+      "expectations": [
+        {"text": "Creates a migration-manifest.yaml with repo set to product-management-configs", "passed": true, "evidence": "Manifest file created with 'repo: product-management-configs'."},
+        {"text": "Marks quay_oidc phase as skipped with reason (no container push)", "passed": true, "evidence": "Skip Conditions table: has_container_push == false → Phase 3 SKIPPED. Dashboard: 'Phase 3: Quay OIDC skip (no container push)'."},
+        {"text": "Marks ci phase as skipped with reason (no CI pipeline)", "passed": true, "evidence": "Skip Conditions table: has_ci == false → Phase 4 SKIPPED. Dashboard: 'Phase 4: CI skip (no CI pipeline)'."},
+        {"text": "Flags the GPL-3.0 license as needing legal review instead of auto-replacing with Apache-2.0", "passed": true, "evidence": "WARNING block about GPL-3.0. License item marked '[human action required]' with 3-step resolution process."},
+        {"text": "Phase 0 assessment shows has_ci=false and has_container_push=false", "passed": true, "evidence": "Assessment table: 'CI pipeline: no', 'Container push: no'."},
+        {"text": "Migration flow goes cleanup -> github_setup -> mirroring -> announce (skipping phases 3 and 4)", "passed": true, "evidence": "Phases 3 and 4 struck through. Active path: 'cleanup -> github_setup -> mirroring -> announce'."}
+      ],
+      "notes": ["GitHub repo request prompt shown. Wave 1 classification. GPL-3.0 well-handled with legal guard. 6 phases (no Phase 7)."]
+    },
+    {
+      "eval_id": 3,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.5,
+        "passed": 3,
+        "failed": 3,
+        "total": 6
+      },
+      "expectations": [
+        {"text": "Creates a migration-manifest.yaml with repo set to product-management-configs", "passed": false, "evidence": "No manifest file created. Produced a text checklist only."},
+        {"text": "Marks quay_oidc phase as skipped with reason (no container push)", "passed": true, "evidence": "'No Container Build / Quay Integration' section says skip entirely."},
+        {"text": "Marks ci phase as skipped with reason (no CI pipeline)", "passed": true, "evidence": "'No CI Pipeline Setup: There is no GitLab CI to port.'"},
+        {"text": "Flags the GPL-3.0 license as needing legal review instead of auto-replacing with Apache-2.0", "passed": true, "evidence": "'License Review (BLOCKER - Needs Resolution First)' with legal review guidance."},
+        {"text": "Phase 0 assessment shows has_ci=false and has_container_push=false", "passed": false, "evidence": "No structured Phase 0 assessment output. Information present but not in assessment format."},
+        {"text": "Migration flow goes cleanup -> github_setup -> mirroring -> announce (skipping phases 3 and 4)", "passed": false, "evidence": "Correct flow but not clearly separated into labeled phases with skip markers."}
+      ],
+      "notes": ["Baseline unchanged from iteration-1."]
+    }
+  ],
+  "run_summary": {
+    "with_skill": {
+      "pass_rate": {"mean": 1.0, "min": 1.0, "max": 1.0},
+      "notes": "100% pass rate maintained across all 3 evals after skill updates."
+    },
+    "without_skill": {
+      "pass_rate": {"mean": 0.611, "min": 0.333, "max": 1.0},
+      "notes": "Baseline unchanged from iteration-1."
+    },
+    "delta": {
+      "pass_rate": "+0.39"
+    }
+  },
+  "iteration_2_observations": [
+    "All iteration-2 changes correctly reflected in with-skill responses: 6 phases, bundled POLICY.md, GitHub repo request prompt, self-reference skip logic.",
+    "The GitHub repo request early trigger appears naturally in evals 1 and 3 (where github_state is absent) and correctly does not appear in eval 2 (where github_state is has_content).",
+    "Self-reference skip logic works correctly: empty gitlab_self_references → item skipped in both manifest and response.",
+    "GPL-3.0 handling continues to work well with the human-action-required guard pattern.",
+    "Resume dashboard (eval 2) correctly shows 6 phases with proper formatting."
+  ]
+}

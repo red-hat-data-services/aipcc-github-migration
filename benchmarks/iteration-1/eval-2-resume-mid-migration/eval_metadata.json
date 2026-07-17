@@ -1,0 +1,31 @@
+{
+  "eval_id": 2,
+  "eval_name": "resume-mid-migration",
+  "prompt": "I have an existing migration-manifest.yaml for the dashboards repo. We finished cleanup and the MR is merged. The GitHub repo already exists and has content pushed. What's next?",
+  "assertions": [
+    {
+      "text": "Reads the existing manifest rather than creating a new one",
+      "type": "flow_check"
+    },
+    {
+      "text": "Shows a status summary with cleanup and github_setup marked complete",
+      "type": "output_check"
+    },
+    {
+      "text": "Does NOT re-run Phase 0 or re-initialize",
+      "type": "flow_check"
+    },
+    {
+      "text": "Identifies quay_oidc as the next phase to work on",
+      "type": "logic_check"
+    },
+    {
+      "text": "Presents guidance for the first quay_oidc item (Create Quay repo)",
+      "type": "output_check"
+    },
+    {
+      "text": "Notes that quay_repo_exists is true, suggesting the Quay repo step may be skippable",
+      "type": "logic_check"
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "pass_rate": 1.0,
+  "passed": 6,
+  "failed": 0,
+  "total": 6,
+  "assertions": [
+    {
+      "text": "Reads the existing manifest rather than creating a new one",
+      "passed": true,
+      "evidence": "Response opens with 'Found the existing manifest at .claude/migrations/dashboard/manifest.yaml'. No init sequence."
+    },
+    {
+      "text": "Shows a status summary with cleanup and github_setup marked complete",
+      "passed": true,
+      "evidence": "Dashboard shows Phase 1: Cleanup complete, Phase 2: GitHub Setup complete."
+    },
+    {
+      "text": "Does NOT re-run Phase 0 or re-initialize",
+      "passed": true,
+      "evidence": "No Phase 0 section. Jumps directly to status dashboard and resume prompt."
+    },
+    {
+      "text": "Identifies quay_oidc as the next phase to work on",
+      "passed": true,
+      "evidence": "Phase 3: Quay OIDC marked 'pending <- you are here' in dashboard."
+    },
+    {
+      "text": "Presents guidance for the first quay_oidc item (Create Quay repo)",
+      "passed": true,
+      "evidence": "All 7 Quay OIDC items listed with dot markers. Create Quay repo annotated with '(skip: quay_repo_exists is true)'."
+    },
+    {
+      "text": "Notes that quay_repo_exists is true, suggesting the Quay repo step may be skippable",
+      "passed": true,
+      "evidence": "'Create Quay repo (skip: quay_repo_exists is true)' — next step set to 'Create org-level robot account'."
+    }
+  ],
+  "notes": [
+    "New in iteration-2: 6 phases in dashboard (no Phase 7).",
+    "Good contextual note about branches_to_ask and downstream rhaiis/pipeline dependency.",
+    "Proactive guidance about QUAY_API_TOKEN needed before first step."
+  ]
+}

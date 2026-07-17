@@ -1,0 +1,37 @@
+{
+  "eval_id": 3,
+  "eval_name": "no-ci-skip-phases",
+  "configuration": "without_skill",
+  "expectations": [
+    {
+      "text": "Creates a migration-manifest.yaml with repo set to product-management-configs",
+      "passed": false,
+      "evidence": "No manifest file created. Produced a text checklist but no persistent YAML state file."
+    },
+    {
+      "text": "Marks quay_oidc phase as skipped with reason (no container push)",
+      "passed": true,
+      "evidence": "'No Container Build / Quay Integration' section explicitly lists skippable items: OIDC config, robot account, keypair setup, container push workflows, image verification."
+    },
+    {
+      "text": "Marks ci phase as skipped with reason (no CI pipeline)",
+      "passed": true,
+      "evidence": "'No CI Pipeline Setup: There is no GitLab CI to port and no GitHub Actions workflow to create.'"
+    },
+    {
+      "text": "Flags the GPL-3.0 license as needing legal review instead of auto-replacing with Apache-2.0",
+      "passed": true,
+      "evidence": "'License Review (BLOCKER - Needs Resolution First)' with detailed legal review guidance: 'Do not simply swap the license file', 'Check with Red Hat legal', 'Contributor consent may be needed.'"
+    },
+    {
+      "text": "Phase 0 assessment shows has_ci=false and has_container_push=false",
+      "passed": false,
+      "evidence": "No structured Phase 0 assessment output. The information is distributed across the response text but not presented as a formal pre-flight assessment."
+    },
+    {
+      "text": "Migration flow goes cleanup -> github_setup -> mirroring -> announce (skipping phases 3 and 4)",
+      "passed": true,
+      "evidence": "10-item checklist shows: license, branches, README, license change, GitHub repo, push history, branch protection, mirroring, references, announce — no CI or Quay steps included."
+    }
+  ]
+}
