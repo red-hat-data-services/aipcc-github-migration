@@ -7,7 +7,7 @@ description: >
   or configuring GitLab pull mirroring. Also use when the user references a
   migration-manifest.yaml file or asks about migration status. This skill handles
   the full lifecycle: repo cleanup, GitHub push, Quay OIDC, CI translation,
-  GitLab mirroring, and team announcement.
+  and GitLab mirroring.
 user-invocable: true
 allowed-tools:
   - Bash
@@ -55,7 +55,6 @@ Phase 2: GitHub Setup ......... <status>
 Phase 3: Quay OIDC ............ <status or "skip (reason)">
 Phase 4: CI ................... <status>
 Phase 5: Mirroring ............ <status>
-Phase 6: Announce ............. <status>
 
 Next step: <first incomplete item in active phase>
 ```
@@ -158,9 +157,9 @@ Populate `detected.gitlab_self_references[]` with the matched file paths.
 **Check for shared-preset/config pattern** — if the repo contains Renovate presets (`extends`
 patterns in JSON files), npm packages, PyPI packages, or CI templates consumed by other repos,
 set `detected.is_shared_preset: true`. This flags downstream coordination needs in Phase 1
-(self-reference rewriting) and Phase 6 (announcement).
+(self-reference rewriting).
 
-**Branch classification** (informational — branch cleanup happens post-announce):
+**Branch classification** (informational — branch cleanup happens post-migration):
 - **Keep**: `main`, `release-*`, `rhel-*`, `rhoai-*`
 - **Stale**: `renovate/*`, branches fully merged into main
 - **Ask**: everything else
@@ -202,7 +201,7 @@ Then proceed to Phase 1.
 
 ### 4. Phase Loop
 
-For each phase (cleanup → github_setup → quay_oidc → ci → mirroring → announce):
+For each phase (cleanup → github_setup → quay_oidc → ci → mirroring):
 
 1. **Check skip conditions** before loading the phase reference file:
    - `detected.has_ci == false` → skip `ci` phase
@@ -212,7 +211,6 @@ For each phase (cleanup → github_setup → quay_oidc → ci → mirroring → 
    - `detected.has_policy_md == true` → skip POLICY.md item in `cleanup`
    - `detected.gitlab_self_references` is empty → skip "Update GitLab self-references" item in `cleanup`
    - `detected.has_container_push == false` → skip "Scope id-token to push job" in `ci` phase
-   - `detected.is_shared_preset == true` → include downstream action block in `announce` template
    - Mark skipped phases/items in the manifest with `status: skipped` and a `reason`
 
 2. **Load the phase reference file** — Read the corresponding file from `references/`:
@@ -221,7 +219,6 @@ For each phase (cleanup → github_setup → quay_oidc → ci → mirroring → 
    - `quay_oidc` → `references/phase-3-quay-oidc.md`
    - `ci` → `references/phase-4-ci.md`
    - `mirroring` → `references/phase-5-mirroring.md`
-   - `announce` → `references/phase-6-announce.md`
 
 3. **Walk through items** in the phase one by one:
    - **Automatable items** (`type: automatable`): Present the command/action, ask "Run this?", execute on approval
@@ -230,7 +227,7 @@ For each phase (cleanup → github_setup → quay_oidc → ci → mirroring → 
 
 4. **After each item**, update the manifest: set item `status` to `complete`, `skipped`, or `blocked`
 
-5. **After all items in a phase**, set the phase `status` to `complete` and announce the next phase
+5. **After all items in a phase**, set the phase `status` to `complete` and present the next phase
 
 6. **After all phases**, congratulate the user and show a final summary
 
@@ -269,7 +266,6 @@ Load these on demand — do not read them all at init.
 | `references/phase-3-quay-oidc.md` | Starting quay_oidc phase |
 | `references/phase-4-ci.md` | Starting ci phase |
 | `references/phase-5-mirroring.md` | Starting mirroring phase |
-| `references/phase-6-announce.md` | Starting announce phase |
 
 ## Manifest Location
 
@@ -291,4 +287,3 @@ From the central-linter migration:
 | Quay OIDC federation | 30 minutes |
 | GitHub Actions CI | 1-2 sessions |
 | GitLab mirroring | 5 minutes |
-| Announcement | 15 minutes |

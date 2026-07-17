@@ -9,7 +9,7 @@ All changes happen on a feature branch in the GitLab repo. One commit per change
 - **[automatable] Update README** — Fix any GitLab-specific URLs or workflow references that won't apply post-migration.
 - **[automatable] Update GitLab self-references** — Replace `gitlab>REPO_PATH` preset references, `local>` paths, and similar with their GitHub equivalents. Skip if `detected.gitlab_self_references` is empty. Show diff and ask before changing cross-platform references.
 
-> **Note:** Branch cleanup on GitLab is deferred to post-announce. Since GitHub becomes canonical via mirroring, only the branches pushed to GitHub matter. Stale GitLab-only branches are cosmetic noise on a read-only mirror.
+> **Note:** Branch cleanup on GitLab is deferred to post-migration. Since GitHub becomes canonical via mirroring, only the branches pushed to GitHub matter. Stale GitLab-only branches are cosmetic noise on a read-only mirror.
 - **[automatable] Commit with Signed-off-by** — All commits in this phase must use `git commit -s` to add the `Signed-off-by:` trailer.
 - **[human] MR submitted and merged** — User opens the MR on GitLab, gets review, and merges. Wait for this before proceeding.
 
@@ -86,8 +86,7 @@ repos, changing `gitlab>` to `github>` here will break every consumer still poin
 ```
 ⚠ This repo appears to be a shared preset/config consumed by other repositories.
   Changing gitlab> references to github> will require downstream repos to update
-  their references too. Coordinate with consuming teams before or during Phase 6
-  (Announce).
+  their references too. Coordinate with consuming teams before rewriting.
 ```
 
 Detect shared-preset repos by checking for Renovate `extends` patterns, npm/PyPI package

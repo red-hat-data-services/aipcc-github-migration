@@ -79,9 +79,3 @@ phases:
       - { name: "Enable GitLab pull mirroring", status: pending, type: automatable }
       - { name: "Verify mirror syncs", status: pending, type: automatable }
       - { name: "Confirm downstream includes work", status: pending, type: human }
-  announce:
-    status: pending
-    items:
-      - { name: "Update README with GitHub URL", status: pending, type: automatable }
-      - { name: "Notify team", status: pending, type: human }
-      - { name: "Update external references", status: pending, type: human }

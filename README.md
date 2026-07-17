@@ -4,14 +4,13 @@ A Claude Code skill for guided migration of GitLab repositories to GitHub, with 
 
 ## What it does
 
-Walks you through the full migration lifecycle in 6 phases:
+Walks you through the full migration lifecycle in 5 phases:
 
 1. **Repo Cleanup** — POLICY.md, license, README, branch pruning, self-reference updates
 2. **GitHub Setup** — create repo, push branches
 3. **Quay OIDC** — federated identity for container pushes (skipped if no container builds)
 4. **CI** — translate `.gitlab-ci.yml` to GitHub Actions (skipped if no CI pipeline)
 5. **Mirroring** — GitLab pull mirror from GitHub so downstream `include:` refs keep working
-6. **Announce** — notify team, update external references
 
 The skill creates a `migration-manifest.yaml` that tracks progress, detected repo state, and phase/item completion. This manifest survives across sessions, so you can resume a migration exactly where you left off.
 
@@ -56,8 +55,7 @@ These are set in the manifest template and SKILL.md — adjust for your org.
 │   ├── phase-2-github-setup.md
 │   ├── phase-3-quay-oidc.md
 │   ├── phase-4-ci.md
-│   ├── phase-5-mirroring.md
-│   └── phase-6-announce.md
+│   └── phase-5-mirroring.md
 ├── templates/
 │   ├── migration-manifest.yaml   # Manifest template
 │   └── POLICY.md                 # AIPCC commit guidelines
