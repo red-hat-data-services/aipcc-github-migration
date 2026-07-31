@@ -286,4 +286,4 @@ From the central-linter migration:
 | GitHub repo + push | 5 minutes |
 | Quay OIDC federation | 30 minutes |
 | GitHub Actions CI | 1-2 sessions |
-| GitLab mirroring | 5 minutes |
+| GitLab mirroring | small MR + up to ~45 min for first sync |

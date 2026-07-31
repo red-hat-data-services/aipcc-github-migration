@@ -76,6 +76,7 @@ phases:
   mirroring:
     status: pending
     items:
-      - { name: "Enable GitLab pull mirroring", status: pending, type: automatable }
-      - { name: "Verify mirror syncs", status: pending, type: automatable }
+      - { name: "Confirm GitHub App installed on source repo", status: pending, type: human }
+      - { name: "Register repo in gitlab-mirror-sync (MR to aipcc-claudio)", status: pending, type: automatable }
+      - { name: "Verify mirror syncs", status: pending, type: human }
       - { name: "Confirm downstream includes work", status: pending, type: human }
