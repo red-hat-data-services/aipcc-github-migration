@@ -55,13 +55,8 @@ These are set in the manifest template and SKILL.md — adjust for your org.
 │   ├── phase-3-quay-oidc.md
 │   ├── phase-4-ci.md
 │   └── phase-5-mirroring.md
-├── templates/
-│   └── migration-manifest.yaml   # Manifest template
-├── evals/
-│   └── evals.json                # Eval scenario definitions
-└── benchmarks/                   # Eval results (not needed for end users)
-    ├── iteration-1/
-    └── iteration-2/
+└── templates/
+    └── migration-manifest.yaml   # Manifest template
 ```
 
 ## License
