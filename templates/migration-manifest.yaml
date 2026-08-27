@@ -4,16 +4,12 @@
 
 repo: REPO_NAME
 source_gitlab: GITLAB_PATH
-target_github_org: opendatahub-io
-target_github_repo: opendatahub-io/REPO_NAME
+target_github_org: TARGET_ORG  # opendatahub-io (upstream/community) or red-hat-data-services (downstream/internal)
+target_github_repo: TARGET_ORG/REPO_NAME
 quay_org: ""    # populated by Phase 0 if container push detected
 quay_repo: ""   # populated by Phase 0 if container push detected
 jira_ticket: ""
 wave: 1  # 1 (simple/no CI), 2 (real CI), 3 (complex multi-arch/cross-repo)
-
-# Cross-repo CI dependency tracking (future use — populated by Phase 0 but not yet acted on)
-includes_from: []   # GitLab projects this repo pulls CI config from
-included_by: []     # GitLab projects that include CI config from this repo
 
 # Phase 0 detected state (populated automatically)
 detected:
@@ -21,26 +17,25 @@ detected:
   has_container_push: false
   has_multi_arch: false
   has_tekton: false
-  has_spec_inputs: false
   has_license: false
   license_type: null
-  has_policy_md: false
   github_state: absent  # absent | empty | has_content
   quay_repo_exists: false
   gitlab_self_references: []  # files containing gitlab>REPO_PATH or similar self-referencing patterns
   is_shared_preset: false     # true if repo is consumed by other repos as preset/config/template
+  includes_from: []   # GitLab projects this repo pulls CI config from
+  included_by: []     # GitLab projects that include CI config from this repo
   branch_count: 0
   branches_to_delete: []
   branches_to_keep: []
   branches_to_ask: []
 
-maintainers: []  # GitHub usernames — populated at init from team roster
+maintainers: []  # GitHub usernames — manually populated or left empty
 
 phases:
   cleanup:
     status: pending
     items:
-      - { name: "Add POLICY.md", status: pending, type: automatable }
       - { name: "Add LICENSE (Apache-2.0)", status: pending, type: automatable }
       - { name: "Update README", status: pending, type: automatable }
       - { name: "Update GitLab self-references", status: pending, type: automatable }

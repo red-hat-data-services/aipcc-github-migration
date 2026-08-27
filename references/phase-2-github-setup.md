@@ -41,7 +41,7 @@ git push github main
 For repos with release branches that should also be pushed:
 ```bash
 # Push all branches classified as "keep" by Phase 0
-for branch in $(yq '.detected.branches_to_keep[]' migration-manifest.yaml); do
+for branch in $(yq '.detected.branches_to_keep[]' .claude/migrations/$REPO/manifest.yaml); do
   git push github "$branch"
 done
 ```
@@ -54,7 +54,7 @@ gh repo view <target_org>/<repo> --json defaultBranchRef,isEmpty
 
 ## Gotchas
 
-- **Merge cleanup MR first**: The push must include the license, POLICY.md, and branch cleanup from Phase 1. Always `git fetch origin && git merge --ff-only origin/main` before pushing.
+- **Merge cleanup MR first**: The push must include the license and README updates from Phase 1. Always `git fetch origin && git merge --ff-only origin/main` before pushing.
 - **SSH key access**: `git push github` uses SSH. If the user hasn't set up SSH for GitHub, they'll need to do that first or use HTTPS instead:
   ```bash
   git remote set-url github https://github.com/<org>/<repo>.git

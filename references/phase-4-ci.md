@@ -150,6 +150,12 @@ gh run watch <RUN_ID> --repo <target_org>/<repo>
 | `CI_JOB_NAME` | `${{ github.job }}` | |
 | `CI_PROJECT_DIR` | `${{ github.workspace }}` | |
 
+### GitHub Actions secrets and variables
+
+The OIDC approach avoids stored secrets for Quay authentication — `id-token: write` handles it at runtime. Most migrated workflows need no repository secrets at all.
+
+If the GitLab CI uses project-level variables (e.g., API tokens, registry credentials), the user must add them manually via **GitHub repo → Settings → Secrets and variables → Actions**. List which variables are needed and tell the user to set them up before the verification step.
+
 ### Things to exclude
 
 - **GitLab-specific CI targets** like `linter-mr-commit` that only make sense in GitLab

@@ -4,7 +4,6 @@ All changes happen on a feature branch in the GitLab repo. One commit per change
 
 ## Items
 
-- **[automatable] Add POLICY.md** — Download the Google Doc guidelines as markdown, update terminology (MR → PR). Commit separately.
 - **[automatable] Add LICENSE (Apache-2.0)** — Standard Apache-2.0 text. Commit separately. Skip if Phase 0 detected an existing Apache-2.0 license.
 - **[automatable] Update README** — Fix any GitLab-specific URLs or workflow references that won't apply post-migration.
 - **[automatable] Update GitLab self-references** — Replace `gitlab>REPO_PATH` preset references, `local>` paths, and similar with their GitHub equivalents. Skip if `detected.gitlab_self_references` is empty. Show diff and ask before changing cross-platform references.
@@ -22,16 +21,6 @@ cd src/<repo>
 git checkout main
 git pull origin main
 git checkout -b cleanup/migration-prep
-```
-
-### Adding POLICY.md
-
-Copy the bundled `templates/POLICY.md` from this skill into the repo root. The file is the AIPCC commit/merge guidelines, already in markdown with PR terminology.
-
-```bash
-# After creating POLICY.md:
-git add POLICY.md
-git commit -s -m "docs: add POLICY.md with commit and merge request guidelines"
 ```
 
 ### Adding LICENSE
@@ -100,7 +89,7 @@ git commit -s -m "chore: update self-references from GitLab to GitHub"
 ### Opening the MR
 
 ```bash
-glab mr create --title "Migration prep: add license, policy, cleanup branches" \
+glab mr create --title "Migration prep: add license, policy, and README updates" \
   --description "Part of GitLab → GitHub migration"
 ```
 
@@ -108,7 +97,6 @@ glab mr create --title "Migration prep: add license, policy, cleanup branches" \
 
 - **Separate commits**: Each change gets its own commit. Don't squash cleanup into one commit — reviewers expect granular changes.
 - **Branch naming**: Use `cleanup/migration-prep` or similar — makes the MR purpose obvious.
-- **POLICY.md terminology**: The Google Doc uses "merge request" — update to "pull request" since the doc will live on GitHub.
 - **GPL-licensed repos**: Two repos (product-management-tool, product-management-configs) are GPL-3.0. These may need legal review before changing to Apache-2.0. If `detected.license_type` is `GPL-3.0`, flag this to the user instead of auto-replacing.
 
 ## Troubleshooting

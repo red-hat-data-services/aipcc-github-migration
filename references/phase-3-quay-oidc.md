@@ -46,9 +46,9 @@ The user needs to get this from the GitHub repo settings page. The format is **i
 repo:<org>@<org_numeric_id>/<repo>@<repo_numeric_id>:ref:refs/heads/main
 ```
 
-Example:
+Example (with fake IDs):
 ```
-repo:opendatahub-io@57720972/central-linter@1292747540:ref:refs/heads/main
+repo:opendatahub-io@12345678/central-linter@87654321:ref:refs/heads/main
 ```
 
 The numeric org and repo IDs are visible on the GitHub repo settings page.
@@ -123,8 +123,8 @@ curl -sf "https://quay.io/api/v1/repository/<quay_org>/<repo>/tag/" | jq '.tags[
   echo "${OIDC_TOKEN}" | cut -d. -f2 | base64 -d 2>/dev/null | jq .sub
   ```
   Compare the decoded `.sub` with what's configured in Quay.
-- **Robot naming**: Use underscores (`central_linter_github`), not hyphens. Quay robot names don't support hyphens.
-- **Don't push to production Quay until federation is confirmed** with the org owner (Ken for aipcc-cicd).
+- **Robot naming**: Use underscores (`<repo>_github`), not hyphens. Quay robot names don't support hyphens.
+- **Don't push to production Quay until federation is confirmed** with the Quay org owner.
 
 ## Troubleshooting
 

@@ -6,7 +6,7 @@ A Claude Code skill for guided migration of GitLab repositories to GitHub, with 
 
 Walks you through the full migration lifecycle in 5 phases:
 
-1. **Repo Cleanup** — POLICY.md, license, README, branch pruning, self-reference updates
+1. **Repo Cleanup** — license, README, branch pruning, self-reference updates
 2. **GitHub Setup** — create repo, push branches
 3. **Quay OIDC** — federated identity for container pushes (skipped if no container builds)
 4. **CI** — translate `.gitlab-ci.yml` to GitHub Actions (skipped if no CI pipeline)
@@ -20,11 +20,11 @@ Clone (or symlink) this repo into your project's `.claude/skills/` directory:
 
 ```bash
 # Option A: git clone
-git clone https://github.com/charliallen/gitlab-to-github-migration.git \
+git clone https://github.com/red-hat-data-services/aipcc-github-migration.git \
       your-project/.claude/skills/gitlab-to-github
 
 # Option B: git submodule
-git submodule add https://github.com/charliallen/gitlab-to-github-migration.git \
+git submodule add https://github.com/red-hat-data-services/aipcc-github-migration.git \
       your-project/.claude/skills/gitlab-to-github
 
 # Option C: symlink (if you already have it cloned elsewhere)
@@ -42,7 +42,6 @@ The skill ships with defaults for the AIPCC productization team:
 - Quay org: `aipcc-cicd`
 - Target GitHub org: `opendatahub-io`
 - Maintainers list pre-populated
-- Bundled `POLICY.md` (AIPCC commit/PR guidelines)
 
 These are set in the manifest template and SKILL.md — adjust for your org.
 
@@ -57,8 +56,7 @@ These are set in the manifest template and SKILL.md — adjust for your org.
 │   ├── phase-4-ci.md
 │   └── phase-5-mirroring.md
 ├── templates/
-│   ├── migration-manifest.yaml   # Manifest template
-│   └── POLICY.md                 # AIPCC commit guidelines
+│   └── migration-manifest.yaml   # Manifest template
 ├── evals/
 │   └── evals.json                # Eval scenario definitions
 └── benchmarks/                   # Eval results (not needed for end users)

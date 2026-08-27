@@ -9,13 +9,25 @@ description: >
   the full lifecycle: repo cleanup, GitHub push, Quay OIDC, CI translation,
   and GitLab mirroring.
 user-invocable: true
+compatibility: Requires glab CLI, gh CLI, yq, and curl. Optional: QUAY_API_TOKEN for Quay robot setup.
 allowed-tools:
-  - Bash
-  - Read
-  - Write
-  - Edit
-  - Agent
-  - WebFetch
+  - Bash(git *)
+  - Bash(glab *)
+  - Bash(gh *)
+  - Bash(curl *)
+  - Bash(yq *)
+  - Bash(grep *)
+  - Bash(find *)
+  - Bash(jq *)
+  - Bash(mkdir *)
+  - Bash(chmod *)
+  - Bash(sed *)
+  - Bash(cat *)
+  - Bash(ls *)
+  - Bash(echo *)
+  - Read(*)
+  - Write(*)
+  - Edit(*)
 ---
 
 # GitLab to GitHub Migration
@@ -23,6 +35,10 @@ allowed-tools:
 A stateful, phased migration skill for moving repositories from GitLab to GitHub.
 Progress is tracked in a `migration-manifest.yaml` file that survives across sessions,
 enabling cold-resume and teammate handoff.
+
+**This skill is designed to be run multiple times.** Migrations involve waiting
+(MR reviews, repo provisioning, approval processes), so the skill saves progress
+and picks up where it left off on the next invocation. Tell the user this upfront.
 
 ## Invocation Flow
 
@@ -45,7 +61,6 @@ Target:  <target_github_repo>
 Ticket:  <jira_ticket or "not set">
 
 Phase 1: Cleanup .............. <status>  ← you are here (on active phase)
-  ✓ Add POLICY.md
   ✓ Add LICENSE (Apache-2.0)
   · Update README                         ← next step
   · Update GitLab self-references
@@ -73,7 +88,7 @@ Next step: <first incomplete item in active phase>
 
 Ask two questions:
 1. "What's the GitLab repo URL or path?" (e.g., `gitlab.com/redhat/rhel-ai/ci-cd/central-linter` or just `redhat/rhel-ai/ci-cd/central-linter`)
-2. "Which GitHub org?" (default: `opendatahub-io`)
+2. "Which GitHub org?" (`opendatahub-io` for upstream/community, `red-hat-data-services` for downstream/internal)
 
 Then:
 - Parse the GitLab input: strip `https://gitlab.com/` prefix if present, extract the repo name (last path segment) and full GitLab path
@@ -92,36 +107,23 @@ Then:
 
 Automated scan — no user input needed. Populate the `detected.*` fields in the manifest.
 
-**Prefer local clone, fall back to GitLab API.** If the repo is cloned locally (e.g., as a
-git submodule in `src/`), scan the filesystem directly — it's faster and doesn't require API auth.
-Only use `glab api` if no local clone is available.
-
-**Local clone checks:**
+The repo must be cloned locally (e.g., as a git submodule in `src/`). Pull latest before scanning.
 
 ```bash
 # Locate the repo — check src/<repo>, or ask the user
 REPO_DIR="src/$REPO_NAME"
 
+# Pull latest
+git -C "$REPO_DIR" checkout main
+git -C "$REPO_DIR" pull origin main
+
 # File checks
 test -f "$REPO_DIR/.gitlab-ci.yml"    # has_ci
 test -f "$REPO_DIR/LICENSE"           # has_license (parse for type)
-test -f "$REPO_DIR/POLICY.md"         # has_policy_md
 test -d "$REPO_DIR/.tekton"           # has_tekton
 
 # Branch list
 git -C "$REPO_DIR" branch -r --list 'origin/*' | sed 's|origin/||'
-```
-
-**GitLab API fallback** (if no local clone):
-
-```bash
-PROJECT_ID=$(echo "$SOURCE_GITLAB" | sed 's|/|%2F|g')
-
-glab api "projects/$PROJECT_ID/repository/files/.gitlab-ci.yml?ref=main" --method GET
-glab api "projects/$PROJECT_ID/repository/files/LICENSE?ref=main" --method GET
-glab api "projects/$PROJECT_ID/repository/files/POLICY.md?ref=main" --method GET
-glab api "projects/$PROJECT_ID/repository/tree?path=.tekton&ref=main" --method GET
-glab api "projects/$PROJECT_ID/repository/branches?per_page=100" --method GET
 ```
 
 **External checks** (always run):
@@ -176,7 +178,6 @@ Container push:  yes/no
 Multi-arch:      yes/no
 Tekton/Konflux:  yes/no
 LICENSE:         Apache-2.0 / MIT / missing
-POLICY.md:       yes/no
 GitHub repo:     absent / empty / has content
 Quay repo:       exists / missing
 Self-references:  N files with gitlab> paths (list them)
@@ -208,7 +209,6 @@ For each phase (cleanup → github_setup → quay_oidc → ci → mirroring):
    - `detected.has_container_push == false` → skip `quay_oidc` phase
    - `detected.github_state == "has_content"` → skip push step in `github_setup`
    - `detected.has_license == true && detected.license_type == "Apache-2.0"` → skip license item in `cleanup`
-   - `detected.has_policy_md == true` → skip POLICY.md item in `cleanup`
    - `detected.gitlab_self_references` is empty → skip "Update GitLab self-references" item in `cleanup`
    - `detected.has_container_push == false` → skip "Scope id-token to push job" in `ci` phase
    - Mark skipped phases/items in the manifest with `status: skipped` and a `reason`
@@ -222,7 +222,10 @@ For each phase (cleanup → github_setup → quay_oidc → ci → mirroring):
 
 3. **Walk through items** in the phase one by one:
    - **Automatable items** (`type: automatable`): Present the command/action, ask "Run this?", execute on approval
-   - **Human-required items** (`type: human`): Explain what needs to happen, ask user to confirm when done
+   - **Human-required items** (`type: human`): Explain what needs to happen, ask user to confirm when done.
+     If the user can't complete it now (waiting for MR review, repo provisioning, etc.),
+     mark it `status: waiting`, save the manifest, and tell them:
+     "Run `/gitlab-to-github` again when that's done — I'll pick up right here."
    - **Blocked items**: If user says something is blocked, mark it `status: blocked` with a note, move on
 
 4. **After each item**, update the manifest: set item `status` to `complete`, `skipped`, or `blocked`
@@ -248,7 +251,7 @@ These are baked into the manifest template. Override at init if needed.
 | Setting | Default |
 |---------|---------|
 | GitLab path | asked at init |
-| Target GitHub org | `opendatahub-io` |
+| Target GitHub org | `opendatahub-io` or `red-hat-data-services` (asked at init) |
 | Quay org | `aipcc-cicd` (only if container push detected) |
 | License | Apache-2.0 |
 | App-interface role | `rhoai/dev` |
@@ -278,7 +281,7 @@ have updated it.
 
 ## Timing Expectations
 
-From the central-linter migration:
+Typical durations (based on past migrations):
 
 | Phase | Typical Duration |
 |-------|-----------------|
