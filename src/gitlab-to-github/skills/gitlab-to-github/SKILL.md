@@ -9,7 +9,7 @@ description: >
   the full lifecycle: repo cleanup, GitHub push, Quay OIDC, CI translation,
   and GitLab mirroring.
 user-invocable: true
-compatibility: Requires glab CLI, gh CLI, yq, and curl. Optional: QUAY_API_TOKEN for Quay robot setup.
+compatibility: "Requires glab CLI, gh CLI, yq, and curl. Optional: QUAY_API_TOKEN for Quay robot setup."
 allowed-tools:
   - Bash(git *)
   - Bash(glab *)
