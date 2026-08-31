@@ -1,0 +1,18 @@
+{
+  "name": "aipcc-github-migration",
+  "description": "Marketplace for AIPCC's GitLab-to-GitHub migration plugin",
+  "owner": {
+    "name": "Red Hat AIPCC"
+  },
+  "plugins": [
+    {
+      "name": "gitlab-to-github",
+      "description": "Guided migration of a GitLab repository to GitHub with stateful, phased progress tracking.",
+      "version": "0.1.0",
+      "source": "./src/gitlab-to-github",
+      "author": {
+        "name": "Red Hat AIPCC"
+      }
+    }
+  ]
+}
