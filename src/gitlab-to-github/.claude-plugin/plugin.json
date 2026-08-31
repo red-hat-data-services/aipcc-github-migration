@@ -1,0 +1,11 @@
+{
+  "name": "gitlab-to-github",
+  "version": "0.1.0",
+  "description": "Guided migration of a GitLab repository to GitHub with stateful, phased progress tracking.",
+  "author": {
+    "name": "Red Hat AIPCC"
+  },
+  "repository": "https://github.com/red-hat-data-services/aipcc-github-migration",
+  "license": "Apache-2.0",
+  "keywords": ["gitlab", "github", "migration", "ci-cd", "quay"]
+}
