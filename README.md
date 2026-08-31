@@ -1,6 +1,8 @@
-# gitlab-to-github-migration
+# aipcc-github-migration
 
-A Claude Code skill for guided migration of GitLab repositories to GitHub, with stateful progress tracking across sessions.
+A Claude Code plugin marketplace for AIPCC. It currently hosts one plugin, `gitlab-to-github`: a
+guided migration skill for moving GitLab repositories to GitHub, with stateful progress tracking
+across sessions.
 
 ## What it does
 
@@ -16,20 +18,11 @@ The skill creates a `migration-manifest.yaml` that tracks progress, detected rep
 
 ## Installation
 
-Clone (or symlink) this repo into your project's `.claude/skills/` directory:
+Add this repo as a plugin marketplace, then install the plugin:
 
-```bash
-# Option A: git clone
-git clone https://github.com/red-hat-data-services/aipcc-github-migration.git \
-      your-project/.claude/skills/gitlab-to-github
-
-# Option B: git submodule
-git submodule add https://github.com/red-hat-data-services/aipcc-github-migration.git \
-      your-project/.claude/skills/gitlab-to-github
-
-# Option C: symlink (if you already have it cloned elsewhere)
-ln -s /path/to/gitlab-to-github-migration \
-      your-project/.claude/skills/gitlab-to-github
+```
+/plugin marketplace add red-hat-data-services/aipcc-github-migration
+/plugin install gitlab-to-github@aipcc-github-migration
 ```
 
 Then invoke the skill by telling Claude to migrate a repo, or type `/gitlab-to-github`.
@@ -48,20 +41,22 @@ These are set in the manifest template and SKILL.md — adjust for your org.
 ## Repo structure
 
 ```
-├── SKILL.md              # Main skill document (loaded by Claude Code)
-├── references/           # Per-phase detailed guidance
-│   ├── phase-1-cleanup.md
-│   ├── phase-2-github-setup.md
-│   ├── phase-3-quay-oidc.md
-│   ├── phase-4-ci.md
-│   └── phase-5-mirroring.md
-├── templates/
-│   └── migration-manifest.yaml   # Manifest template
-├── evals/
-│   └── evals.json                # Eval scenario definitions
-└── benchmarks/                   # Eval results (not needed for end users)
-    ├── iteration-1/
-    └── iteration-2/
+├── .claude-plugin/
+│   └── marketplace.json                    # Marketplace manifest — lists plugins and their source paths
+├── src/gitlab-to-github/
+│   ├── .claude-plugin/plugin.json          # Plugin manifest
+│   └── skills/gitlab-to-github/
+│       ├── SKILL.md                        # Main skill document (loaded by Claude Code)
+│       ├── references/                     # Per-phase detailed guidance, loaded on demand
+│       │   ├── phase-1-cleanup.md
+│       │   ├── phase-2-github-setup.md
+│       │   ├── phase-3-quay-oidc.md
+│       │   ├── phase-4-ci.md
+│       │   └── phase-5-mirroring.md
+│       └── templates/
+│           └── migration-manifest.yaml     # Manifest template
+└── tests/gitlab-to-github/skills/gitlab-to-github/
+    └── evals.json                          # Eval scenario definitions
 ```
 
 ## License
