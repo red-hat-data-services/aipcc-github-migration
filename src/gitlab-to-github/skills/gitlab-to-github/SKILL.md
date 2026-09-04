@@ -69,9 +69,10 @@ Phase 1: Cleanup .............. <status>  ← you are here (on active phase)
   · Commit with Signed-off-by
   · MR submitted and merged
 Phase 2: GitHub Setup ......... <status>
-Phase 3: Quay OIDC ............ <status or "skip (reason)">
-Phase 4: CI ................... <status>
-Phase 5: Mirroring ............ <status>
+Phase 3: Konflux/KRD .......... <status or "skip (reason)">
+Phase 4: Quay OIDC ............ <status or "skip (reason)">
+Phase 5: CI ................... <status>
+Phase 6: Mirroring ............ <status>
 
 Next step: <first incomplete item in active phase>
 ```
@@ -115,9 +116,10 @@ summary table format.
 
 ### 4. Phase Loop
 
-For each phase (cleanup → github_setup → quay_oidc → ci → mirroring):
+For each phase (cleanup → github_setup → konflux_krd → quay_oidc → ci → mirroring):
 
 1. **Check skip conditions** before loading the phase reference file:
+   - `konflux_managed != true` → skip `konflux_krd` phase entirely (requires the explicit user confirmation from Phase 0, not just `detected.has_tekton`)
    - `detected.has_ci == false` → skip `ci` phase
    - `detected.has_container_push == false` → skip `quay_oidc` phase
    - `detected.github_state == "has_content"` → skip push step in `github_setup`
@@ -135,9 +137,10 @@ For each phase (cleanup → github_setup → quay_oidc → ci → mirroring):
 2. **Load the phase reference file** — Read the corresponding file from `references/`:
    - `cleanup` → `references/phase-1-cleanup.md`
    - `github_setup` → `references/phase-2-github-setup.md`
-   - `quay_oidc` → `references/phase-3-quay-oidc.md`
-   - `ci` → `references/phase-4-ci.md`
-   - `mirroring` → `references/phase-5-mirroring.md`
+   - `konflux_krd` → `references/phase-3-konflux-krd.md`
+   - `quay_oidc` → `references/phase-4-quay-oidc.md`
+   - `ci` → `references/phase-5-ci.md`
+   - `mirroring` → `references/phase-6-mirroring.md`
 
 3. **Walk through items** in the phase one by one:
    - **Automatable items** (`type: automatable`): Present the command/action, ask "Run this?", execute on approval
@@ -186,9 +189,10 @@ Load these on demand — do not read them all at init.
 | `references/phase-0-preflight.md` | Running Phase 0 assessment |
 | `references/phase-1-cleanup.md` | Starting cleanup phase |
 | `references/phase-2-github-setup.md` | Starting github_setup phase |
-| `references/phase-3-quay-oidc.md` | Starting quay_oidc phase |
-| `references/phase-4-ci.md` | Starting ci phase |
-| `references/phase-5-mirroring.md` | Starting mirroring phase |
+| `references/phase-3-konflux-krd.md` | Starting konflux_krd phase (only if `konflux_managed` confirmed) |
+| `references/phase-4-quay-oidc.md` | Starting quay_oidc phase |
+| `references/phase-5-ci.md` | Starting ci phase |
+| `references/phase-6-mirroring.md` | Starting mirroring phase |
 
 ## Manifest Location
 
@@ -207,6 +211,7 @@ Typical durations (based on past migrations):
 |-------|-----------------|
 | Cleanup + MR review | 1-2 sessions |
 | GitHub repo + push | 5 minutes |
+| Konflux/KRD reconfiguration | small MR per item + ArgoCD sync wait (minutes to tens of minutes); budget more for later items in this phase that touch Components, not just ImageRepositories |
 | Quay OIDC federation | 30 minutes |
 | GitHub Actions CI | 1-2 sessions |
 | GitLab mirroring | small MR + up to ~45 min for first sync |

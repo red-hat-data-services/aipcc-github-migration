@@ -1,4 +1,4 @@
-# Phase 3: Quay OIDC Federation
+# Phase 4: Quay OIDC Federation
 
 Passwordless container image push from GitHub Actions to Quay.io. No secrets to rotate.
 
@@ -101,7 +101,7 @@ git commit -s -m "ci: add Quay OIDC login script for GitHub Actions"
 
 ### Verifying the push
 
-After CI is configured (Phase 4), trigger a run:
+After CI is configured (Phase 5), trigger a run:
 ```bash
 gh workflow run ci.yml --repo <target_org>/<repo> --ref main
 gh run list --repo <target_org>/<repo> --limit 1
