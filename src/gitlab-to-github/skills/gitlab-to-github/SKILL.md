@@ -9,7 +9,7 @@ description: >
   the full lifecycle: repo cleanup, GitHub push, Quay OIDC, CI translation,
   and GitLab mirroring.
 user-invocable: true
-compatibility: "Requires glab CLI, gh CLI, yq, and curl. Optional: QUAY_API_TOKEN for Quay robot setup."
+compatibility: "Requires glab CLI, gh CLI, yq, and curl. Optional: QUAY_API_TOKEN for Quay robot setup. Requires ldapsearch and a valid Kerberos ticket (kinit) for CODEOWNERS username resolution — see the ldap skill."
 allowed-tools:
   - Bash(git *)
   - Bash(glab *)
@@ -25,6 +25,7 @@ allowed-tools:
   - Bash(cat *)
   - Bash(ls *)
   - Bash(echo *)
+  - Bash(ldapsearch *)
   - Read(*)
   - Write(*)
   - Edit(*)
@@ -122,6 +123,12 @@ test -f "$REPO_DIR/.gitlab-ci.yml"    # has_ci
 test -f "$REPO_DIR/LICENSE"           # has_license (parse for type)
 test -d "$REPO_DIR/.tekton"           # has_tekton
 
+# CODEOWNERS can live in any of these locations (GitLab and GitHub both support root;
+# GitLab also checks .gitlab/ and docs/)
+for p in CODEOWNERS .gitlab/CODEOWNERS docs/CODEOWNERS; do
+  test -f "$REPO_DIR/$p" && echo "$p"  # has_codeowners / codeowners_path
+done
+
 # Branch list
 git -C "$REPO_DIR" branch -r --list 'origin/*' | sed 's|origin/||'
 ```
@@ -178,6 +185,7 @@ Container push:  yes/no
 Multi-arch:      yes/no
 Tekton/Konflux:  yes/no
 LICENSE:         Apache-2.0 / MIT / missing
+CODEOWNERS:      present (<path>) / missing
 GitHub repo:     absent / empty / has content
 Quay repo:       exists / missing
 Self-references:  N files with gitlab> paths (list them)
@@ -215,6 +223,7 @@ For each phase (cleanup → github_setup → quay_oidc → ci → mirroring):
      answer in `license_decision` (`add` or `skip`) so re-runs don't ask again. If `skip`, mark
      the license item `status: skipped` with the user's reason.
    - `detected.gitlab_self_references` is empty → skip "Update GitLab self-references" item in `cleanup`
+   - `detected.has_codeowners == false` → skip "Update CODEOWNERS for GitHub usernames" item in `cleanup`
    - `detected.has_container_push == false` → skip "Scope id-token to push job" in `ci` phase
    - Mark skipped phases/items in the manifest with `status: skipped` and a `reason`
 

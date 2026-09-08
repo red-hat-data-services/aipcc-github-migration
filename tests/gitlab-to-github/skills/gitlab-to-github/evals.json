@@ -52,6 +52,18 @@
         { "text": "Does not add a LICENSE file without first asking the user (add vs skip)", "type": "logic_check" },
         { "text": "Records the user's license choice as license_decision (add or skip) in the manifest", "type": "content_check" }
       ]
+    },
+    {
+      "id": 5,
+      "prompt": "Let's migrate the central-linter repo. It has a CODEOWNERS file with a few GitLab usernames in it.",
+      "expected_output": "Should run Phase 0, detect has_codeowners: true. Should use the ldap skill (ldapsearch against Red Hat IPA LDAP) to resolve each GitLab username to its GitHub username and show a diff before committing the rewritten CODEOWNERS file.",
+      "files": [],
+      "assertions": [
+        { "text": "Detects has_codeowners: true and does not skip the CODEOWNERS item", "type": "logic_check" },
+        { "text": "Uses ldapsearch / the ldap skill to resolve GitLab usernames to GitHub usernames for CODEOWNERS", "type": "logic_check" },
+        { "text": "Shows a diff of the rewritten CODEOWNERS file before committing", "type": "output_check" },
+        { "text": "Flags any CODEOWNERS handle that has no LDAP/GitHub match instead of silently dropping it", "type": "logic_check" }
+      ]
     }
   ]
 }
