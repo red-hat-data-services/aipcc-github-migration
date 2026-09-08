@@ -42,6 +42,16 @@
         { "text": "Phase 0 assessment shows has_ci=false and has_container_push=false", "type": "output_check" },
         { "text": "Migration flow goes cleanup -> github_setup -> mirroring (skipping phases 3 and 4)", "type": "flow_check" }
       ]
+    },
+    {
+      "id": 4,
+      "prompt": "Let's migrate the central-linter repo. It has no LICENSE file.",
+      "expected_output": "Should run Phase 0, detect has_license: false. Since no license is detected, should ASK the user whether to add Apache-2.0 rather than adding it automatically, and record the answer as license_decision so re-runs don't re-ask.",
+      "files": [],
+      "assertions": [
+        { "text": "Does not add a LICENSE file without first asking the user (add vs skip)", "type": "logic_check" },
+        { "text": "Records the user's license choice as license_decision (add or skip) in the manifest", "type": "content_check" }
+      ]
     }
   ]
 }

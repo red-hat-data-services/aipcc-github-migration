@@ -4,7 +4,7 @@ All changes happen on a feature branch in the GitLab repo. One commit per change
 
 ## Items
 
-- **[automatable] Add LICENSE (Apache-2.0)** — Standard Apache-2.0 text. Commit separately. Skip if Phase 0 detected an existing Apache-2.0 license.
+- **[automatable] Add LICENSE (Apache-2.0)** — Not always required. Skip automatically if Phase 0 detected an existing Apache-2.0 license. Otherwise, ask the user whether to add one — see "Deciding on the license" below. Commit separately.
 - **[automatable] Update README** — Fix any GitLab-specific URLs or workflow references that won't apply post-migration.
 - **[automatable] Update GitLab self-references** — Replace `gitlab>REPO_PATH` preset references, `local>` paths, and similar with their GitHub equivalents. Skip if `detected.gitlab_self_references` is empty. Show diff and ask before changing cross-platform references.
 
@@ -23,7 +23,24 @@ git pull origin main
 git checkout -b cleanup/migration-prep
 ```
 
+### Deciding on the license
+
+If `detected.has_license` is false (or the existing license isn't Apache-2.0), don't add it
+automatically — ask the user first:
+
+```
+No Apache-2.0 LICENSE detected. Add one?
+  - Add Apache-2.0 (standard for AIPCC upstream/community repos)
+  - Skip (internal-only repo, license handled elsewhere, or pending legal review)
+```
+
+Record the answer in the manifest as `license_decision: add` or `license_decision: skip` so
+re-runs of the skill don't ask again. If `skip`, mark the item `status: skipped` with the user's
+stated reason.
+
 ### Adding LICENSE
+
+Only run this if `license_decision == "add"`.
 
 ```bash
 # Write the Apache-2.0 license text to LICENSE
@@ -98,6 +115,7 @@ glab mr create --title "Migration prep: add license, policy, and README updates"
 - **Separate commits**: Each change gets its own commit. Don't squash cleanup into one commit — reviewers expect granular changes.
 - **Branch naming**: Use `cleanup/migration-prep` or similar — makes the MR purpose obvious.
 - **GPL-licensed repos**: Two repos (product-management-tool, product-management-configs) are GPL-3.0. These may need legal review before changing to Apache-2.0. If `detected.license_type` is `GPL-3.0`, flag this to the user instead of auto-replacing.
+- **License is optional now**: Don't assume Apache-2.0 gets added by default — always ask when no license is detected, and respect `license_decision: skip`.
 
 ## Troubleshooting
 

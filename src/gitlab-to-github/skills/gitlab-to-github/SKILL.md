@@ -209,6 +209,11 @@ For each phase (cleanup → github_setup → quay_oidc → ci → mirroring):
    - `detected.has_container_push == false` → skip `quay_oidc` phase
    - `detected.github_state == "has_content"` → skip push step in `github_setup`
    - `detected.has_license == true && detected.license_type == "Apache-2.0"` → skip license item in `cleanup`
+   - Otherwise, no existing license is detected — this is **not** an auto-skip. Ask the user
+     whether to add the Apache-2.0 license or skip it (e.g. internal-only repo, license handled
+     elsewhere, GPL repo pending legal review — see Gotchas in `phase-1-cleanup.md`). Record the
+     answer in `license_decision` (`add` or `skip`) so re-runs don't ask again. If `skip`, mark
+     the license item `status: skipped` with the user's reason.
    - `detected.gitlab_self_references` is empty → skip "Update GitLab self-references" item in `cleanup`
    - `detected.has_container_push == false` → skip "Scope id-token to push job" in `ci` phase
    - Mark skipped phases/items in the manifest with `status: skipped` and a `reason`
@@ -253,7 +258,7 @@ These are baked into the manifest template. Override at init if needed.
 | GitLab path | asked at init |
 | Target GitHub org | `opendatahub-io` or `red-hat-data-services` (asked at init) |
 | Quay org | `aipcc-cicd` (only if container push detected) |
-| License | Apache-2.0 |
+| License (if user opts to add one) | Apache-2.0 |
 | App-interface role | `rhoai/dev` |
 
 Maintainers list is in the manifest template.
