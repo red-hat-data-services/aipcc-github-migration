@@ -33,7 +33,7 @@ The skill ships with defaults for the AIPCC productization team:
 
 - GitLab prefix: `redhat/rhel-ai/ci-cd/`
 - Quay org: `aipcc-cicd`
-- Target GitHub org: `opendatahub-io`
+- Target GitHub org: `opendatahub-io` (upstream/community) or `red-hat-data-services` (downstream/internal), asked at init
 - Maintainers list pre-populated
 
 These are set in the manifest template and SKILL.md — adjust for your org.
