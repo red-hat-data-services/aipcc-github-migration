@@ -268,7 +268,7 @@ These are baked into the manifest template. Override at init if needed.
 | GitLab path | asked at init |
 | Target GitHub org | `opendatahub-io` or `red-hat-data-services` (asked at init) |
 | Quay org | `aipcc-cicd` (only if container push detected) |
-| License (if user opts to add one) | Apache-2.0 |
+| License (optional, if added) | Apache-2.0 |
 | App-interface role | `rhoai/dev` |
 
 Maintainers list is in the manifest template.
