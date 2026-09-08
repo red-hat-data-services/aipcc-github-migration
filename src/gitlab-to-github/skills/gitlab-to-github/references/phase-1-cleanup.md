@@ -106,10 +106,9 @@ git commit -s -m "chore: update self-references from GitLab to GitHub"
 
 ### Updating CODEOWNERS for GitHub usernames
 
-Skip if `detected.has_codeowners` is false. GitLab CODEOWNERS entries use GitLab usernames
-(`@gitlab-handle`); GitHub requires GitHub usernames (`@github-handle`) for the same syntax to
-resolve to review requests. Read the file at `detected.codeowners_path` and, for every `@handle`
-entry, resolve it to the matching GitHub username via LDAP.
+Skip if `detected.has_codeowners` is false. GitLab CODEOWNERS entries use GitLab handles
+(`@gitlab-handle`); GitHub requires GitHub handles for the same syntax to resolve to review
+requests. Read the file at `detected.codeowners_path` and resolve every `@handle` via LDAP.
 
 Use the **ldap skill** for these lookups (Red Hat IPA LDAP over `ldapsearch`, requires a valid
 Kerberos ticket — `kinit` first if a query returns nothing):
@@ -153,7 +152,7 @@ glab mr create --title "Migration prep: add license, policy, and README updates"
 - **Branch naming**: Use `cleanup/migration-prep` or similar — makes the MR purpose obvious.
 - **GPL-licensed repos**: Two repos (product-management-tool, product-management-configs) are GPL-3.0. These may need legal review before changing to Apache-2.0. If `detected.license_type` is `GPL-3.0`, flag this to the user instead of auto-replacing.
 - **License is optional now**: Don't assume Apache-2.0 gets added by default — always ask when no license is detected, and respect `license_decision: skip`.
-- **CODEOWNERS handles without a GitHub account on file**: Some GitLab CODEOWNERS entries may be groups (`@team-name`), not individual users — LDAP user lookups won't resolve these. Leave group references as-is and flag them for manual review.
+- **CODEOWNERS group entries**: Some GitLab CODEOWNERS entries may be groups (`@team-name`), not individual users — LDAP user lookups won't resolve these. Leave group references as-is and flag them for manual review.
 
 ## Troubleshooting
 
