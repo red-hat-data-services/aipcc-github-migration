@@ -10,6 +10,7 @@ quay_org: ""    # populated by Phase 0 if container push detected
 quay_repo: ""   # populated by Phase 0 if container push detected
 jira_ticket: ""
 wave: 1  # 1 (simple/no CI), 2 (real CI), 3 (complex multi-arch/cross-repo)
+license_decision: null  # "add" | "skip" | null (asked in Phase 1 if no license detected)
 
 # Phase 0 detected state (populated automatically)
 detected:
@@ -19,6 +20,8 @@ detected:
   has_tekton: false
   has_license: false
   license_type: null
+  has_codeowners: false
+  codeowners_path: null   # CODEOWNERS | .gitlab/CODEOWNERS | docs/CODEOWNERS
   github_state: absent  # absent | empty | has_content
   quay_repo_exists: false
   gitlab_self_references: []  # files containing gitlab>REPO_PATH or similar self-referencing patterns
@@ -39,6 +42,7 @@ phases:
       - { name: "Add LICENSE (Apache-2.0)", status: pending, type: automatable }
       - { name: "Update README", status: pending, type: automatable }
       - { name: "Update GitLab self-references", status: pending, type: automatable }
+      - { name: "Update CODEOWNERS for GitHub usernames", status: pending, type: automatable }
       - { name: "Commit with Signed-off-by", status: pending, type: automatable }
       - { name: "MR submitted and merged", status: pending, type: human }
   github_setup:

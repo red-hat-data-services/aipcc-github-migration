@@ -33,7 +33,7 @@ The skill ships with defaults for the AIPCC productization team:
 
 - GitLab prefix: `redhat/rhel-ai/ci-cd/`
 - Quay org: `aipcc-cicd`
-- Target GitHub org: `opendatahub-io`
+- Target GitHub org: `opendatahub-io` (upstream/community) or `red-hat-data-services` (downstream/internal), asked at init
 - Maintainers list pre-populated
 
 These are set in the manifest template and SKILL.md — adjust for your org.
@@ -45,16 +45,21 @@ These are set in the manifest template and SKILL.md — adjust for your org.
 │   └── marketplace.json                    # Marketplace manifest — lists plugins and their source paths
 ├── src/gitlab-to-github/
 │   ├── .claude-plugin/plugin.json          # Plugin manifest
-│   └── skills/gitlab-to-github/
-│       ├── SKILL.md                        # Main skill document (loaded by Claude Code)
-│       ├── references/                     # Per-phase detailed guidance, loaded on demand
-│       │   ├── phase-1-cleanup.md
-│       │   ├── phase-2-github-setup.md
-│       │   ├── phase-3-quay-oidc.md
-│       │   ├── phase-4-ci.md
-│       │   └── phase-5-mirroring.md
-│       └── templates/
-│           └── migration-manifest.yaml     # Manifest template
+│   ├── README.md                           # Plugin-level overview
+│   └── skills/
+│       ├── gitlab-to-github/
+│       │   ├── SKILL.md                    # Main skill document (loaded by Claude Code)
+│       │   ├── references/                 # Per-phase detailed guidance, loaded on demand
+│       │   │   ├── phase-0-preflight.md
+│       │   │   ├── phase-1-cleanup.md
+│       │   │   ├── phase-2-github-setup.md
+│       │   │   ├── phase-3-quay-oidc.md
+│       │   │   ├── phase-4-ci.md
+│       │   │   └── phase-5-mirroring.md
+│       │   └── templates/
+│       │       └── migration-manifest.yaml # Manifest template
+│       └── ldap/
+│           └── SKILL.md                    # Red Hat LDAP lookups, used for CODEOWNERS translation
 └── tests/gitlab-to-github/skills/gitlab-to-github/
     └── evals.json                          # Eval scenario definitions
 ```

@@ -9,7 +9,7 @@ description: >
   the full lifecycle: repo cleanup, GitHub push, Quay OIDC, CI translation,
   and GitLab mirroring.
 user-invocable: true
-compatibility: "Requires glab CLI, gh CLI, yq, and curl. Optional: QUAY_API_TOKEN for Quay robot setup."
+compatibility: "Requires glab CLI, gh CLI, yq, curl, and ldapsearch (with a Kerberos ticket for CODEOWNERS lookups — see the ldap skill). Optional: QUAY_API_TOKEN for Quay robot setup."
 allowed-tools:
   - Bash(git *)
   - Bash(glab *)
@@ -25,6 +25,7 @@ allowed-tools:
   - Bash(cat *)
   - Bash(ls *)
   - Bash(echo *)
+  - Bash(ldapsearch *)
   - Read(*)
   - Write(*)
   - Edit(*)
@@ -64,6 +65,7 @@ Phase 1: Cleanup .............. <status>  ← you are here (on active phase)
   ✓ Add LICENSE (Apache-2.0)
   · Update README                         ← next step
   · Update GitLab self-references
+  · Update CODEOWNERS for GitHub usernames
   · Commit with Signed-off-by
   · MR submitted and merged
 Phase 2: GitHub Setup ......... <status>
@@ -105,100 +107,11 @@ Then:
 
 ### 3. Phase 0: Pre-flight Assessment
 
-Automated scan — no user input needed. Populate the `detected.*` fields in the manifest.
+Automated scan — no user input needed. Populate the `detected.*` fields in the manifest, then
+present the assessment summary and proceed to Phase 1.
 
-The repo must be cloned locally (e.g., as a git submodule in `src/`). Pull latest before scanning.
-
-```bash
-# Locate the repo — check src/<repo>, or ask the user
-REPO_DIR="src/$REPO_NAME"
-
-# Pull latest
-git -C "$REPO_DIR" checkout main
-git -C "$REPO_DIR" pull origin main
-
-# File checks
-test -f "$REPO_DIR/.gitlab-ci.yml"    # has_ci
-test -f "$REPO_DIR/LICENSE"           # has_license (parse for type)
-test -d "$REPO_DIR/.tekton"           # has_tekton
-
-# Branch list
-git -C "$REPO_DIR" branch -r --list 'origin/*' | sed 's|origin/||'
-```
-
-**External checks** (always run):
-
-```bash
-# GitHub repo state
-gh repo view "$TARGET_GITHUB_REPO" --json isEmpty 2>/dev/null
-
-# Quay repo exists? (only if has_container_push is true)
-curl -sf "https://quay.io/api/v1/repository/$QUAY_ORG/$REPO_NAME" >/dev/null 2>&1
-```
-
-**If `.gitlab-ci.yml` exists**, parse it for:
-- `buildah push` / `podman push` / `skopeo copy` → `detected.has_container_push: true`
-- `--platform` / `--manifest` / architecture matrix → `detected.has_multi_arch: true`
-- `include: project:` → populate `detected.includes_from[]`
-
-**If `has_container_push` is true**, populate the Quay fields in the manifest:
-- `quay_org`: `aipcc-cicd` (AIPCC default — ask user to confirm)
-- `quay_repo`: `<quay_org>/<repo>`
-- Run the Quay check: `curl -sf "https://quay.io/api/v1/repository/$QUAY_ORG/$REPO_NAME"`
-- Set `detected.quay_repo_exists` accordingly
-
-**Scan for self-referencing GitLab paths** in all non-binary files:
-```bash
-# Look for gitlab> preset references, GitLab API URLs, or project paths pointing to this repo
-grep -rl "gitlab>.*$REPO_NAME\|gitlab\.com/.*$SOURCE_GITLAB" . \
-  --include="*.json" --include="*.yaml" --include="*.yml" --include="*.md" \
-  --exclude-dir=.git
-```
-Populate `detected.gitlab_self_references[]` with the matched file paths.
-
-**Check for shared-preset/config pattern** — if the repo contains Renovate presets (`extends`
-patterns in JSON files), npm packages, PyPI packages, or CI templates consumed by other repos,
-set `detected.is_shared_preset: true`. This flags downstream coordination needs in Phase 1
-(self-reference rewriting).
-
-**Branch classification** (informational — branch cleanup happens post-migration):
-- **Keep**: `main`, `release-*`, `rhel-*`, `rhoai-*`
-- **Stale**: `renovate/*`, branches fully merged into main
-- **Ask**: everything else
-
-Update the manifest with all detected values and write it back.
-
-**Present results** to user as a summary table:
-
-```
-Pre-flight Assessment for <repo>
-────────────────────────────────
-CI pipeline:     yes/no
-Container push:  yes/no
-Multi-arch:      yes/no
-Tekton/Konflux:  yes/no
-LICENSE:         Apache-2.0 / MIT / missing
-GitHub repo:     absent / empty / has content
-Quay repo:       exists / missing
-Self-references:  N files with gitlab> paths (list them)
-Shared preset:   yes/no (if yes, downstream repos need coordinated updates)
-Branches:        N total (K keep, D delete, A to review)
-```
-
-**If `github_state == "absent"`**, prompt the user to request the repo now so approval
-overlaps with Phase 1 cleanup:
-
-```
-⚠ GitHub repo does not exist yet.
-
-Submit the repo request Google Form
-  (ask the team chat if you don't have the URL yet).
-
-Submit now — approval can take hours/days, and Phase 1 cleanup
-runs in parallel.
-```
-
-Then proceed to Phase 1.
+Read `references/phase-0-preflight.md` for the exact checks to run, what to populate, and the
+summary table format.
 
 ### 4. Phase Loop
 
@@ -209,7 +122,13 @@ For each phase (cleanup → github_setup → quay_oidc → ci → mirroring):
    - `detected.has_container_push == false` → skip `quay_oidc` phase
    - `detected.github_state == "has_content"` → skip push step in `github_setup`
    - `detected.has_license == true && detected.license_type == "Apache-2.0"` → skip license item in `cleanup`
+   - Otherwise, no existing license is detected — this is **not** an auto-skip. Ask the user
+     whether to add the Apache-2.0 license or skip it (e.g. internal-only repo, license handled
+     elsewhere, GPL repo pending legal review — see Gotchas in `phase-1-cleanup.md`). Record the
+     answer in `license_decision` (`add` or `skip`) so re-runs don't ask again. If `skip`, mark
+     the license item `status: skipped` with the user's reason.
    - `detected.gitlab_self_references` is empty → skip "Update GitLab self-references" item in `cleanup`
+   - `detected.has_codeowners == false` → skip "Update CODEOWNERS for GitHub usernames" item in `cleanup`
    - `detected.has_container_push == false` → skip "Scope id-token to push job" in `ci` phase
    - Mark skipped phases/items in the manifest with `status: skipped` and a `reason`
 
@@ -253,7 +172,7 @@ These are baked into the manifest template. Override at init if needed.
 | GitLab path | asked at init |
 | Target GitHub org | `opendatahub-io` or `red-hat-data-services` (asked at init) |
 | Quay org | `aipcc-cicd` (only if container push detected) |
-| License | Apache-2.0 |
+| License (optional, if added) | Apache-2.0 |
 | App-interface role | `rhoai/dev` |
 
 Maintainers list is in the manifest template.
@@ -264,6 +183,7 @@ Load these on demand — do not read them all at init.
 
 | File | When to read |
 |------|-------------|
+| `references/phase-0-preflight.md` | Running Phase 0 assessment |
 | `references/phase-1-cleanup.md` | Starting cleanup phase |
 | `references/phase-2-github-setup.md` | Starting github_setup phase |
 | `references/phase-3-quay-oidc.md` | Starting quay_oidc phase |
