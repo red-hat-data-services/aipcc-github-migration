@@ -45,16 +45,19 @@ These are set in the manifest template and SKILL.md — adjust for your org.
 │   └── marketplace.json                    # Marketplace manifest — lists plugins and their source paths
 ├── src/gitlab-to-github/
 │   ├── .claude-plugin/plugin.json          # Plugin manifest
-│   └── skills/gitlab-to-github/
-│       ├── SKILL.md                        # Main skill document (loaded by Claude Code)
-│       ├── references/                     # Per-phase detailed guidance, loaded on demand
-│       │   ├── phase-1-cleanup.md
-│       │   ├── phase-2-github-setup.md
-│       │   ├── phase-3-quay-oidc.md
-│       │   ├── phase-4-ci.md
-│       │   └── phase-5-mirroring.md
-│       └── templates/
-│           └── migration-manifest.yaml     # Manifest template
+│   └── skills/
+│       ├── gitlab-to-github/
+│       │   ├── SKILL.md                    # Main skill document (loaded by Claude Code)
+│       │   ├── references/                 # Per-phase detailed guidance, loaded on demand
+│       │   │   ├── phase-1-cleanup.md
+│       │   │   ├── phase-2-github-setup.md
+│       │   │   ├── phase-3-quay-oidc.md
+│       │   │   ├── phase-4-ci.md
+│       │   │   └── phase-5-mirroring.md
+│       │   └── templates/
+│       │       └── migration-manifest.yaml # Manifest template
+│       └── ldap/
+│           └── SKILL.md                    # Red Hat LDAP lookups, used for CODEOWNERS translation
 └── tests/gitlab-to-github/skills/gitlab-to-github/
     └── evals.json                          # Eval scenario definitions
 ```
