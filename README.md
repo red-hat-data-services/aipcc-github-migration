@@ -45,10 +45,12 @@ These are set in the manifest template and SKILL.md — adjust for your org.
 │   └── marketplace.json                    # Marketplace manifest — lists plugins and their source paths
 ├── src/gitlab-to-github/
 │   ├── .claude-plugin/plugin.json          # Plugin manifest
+│   ├── README.md                           # Plugin-level overview
 │   └── skills/
 │       ├── gitlab-to-github/
 │       │   ├── SKILL.md                    # Main skill document (loaded by Claude Code)
 │       │   ├── references/                 # Per-phase detailed guidance, loaded on demand
+│       │   │   ├── phase-0-preflight.md
 │       │   │   ├── phase-1-cleanup.md
 │       │   │   ├── phase-2-github-setup.md
 │       │   │   ├── phase-3-quay-oidc.md

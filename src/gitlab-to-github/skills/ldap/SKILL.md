@@ -1,6 +1,6 @@
 ---
 name: ldap
-description: Look up Red Hat people and groups in LDAP via ldapsearch — find someone's email, uid, full name, or GitHub/GitLab username; list a group's members or owners; find which groups a user belongs to. Information in "Rover Groups" is also in LDAP.
+description: Use when you need to look up Red Hat people and groups in LDAP via ldapsearch — find someone's email, uid, full name, or GitHub/GitLab username; list a group's members or owners; find which groups a user belongs to; or translate a GitLab username to a GitHub username (e.g. for CODEOWNERS). Information in "Rover Groups" is also in LDAP.
 allowed-tools: Bash, Read
 ---
 

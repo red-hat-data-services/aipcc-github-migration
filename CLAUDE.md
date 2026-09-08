@@ -18,7 +18,7 @@ src/gitlab-to-github/
   .claude-plugin/plugin.json             # Plugin manifest (name, version, repo, keywords)
   skills/gitlab-to-github/
     SKILL.md                             # The skill itself — frontmatter + full invocation flow
-    references/phase-{1..5}-*.md         # Per-phase detailed guidance, loaded on demand by SKILL.md
+    references/phase-{0..5}-*.md         # Per-phase detailed guidance, loaded on demand by SKILL.md
     templates/migration-manifest.yaml    # Template written to `.claude/migrations/<repo>/manifest.yaml`
   skills/ldap/SKILL.md                   # Red Hat LDAP lookups, used to translate CODEOWNERS handles
 tests/gitlab-to-github/skills/gitlab-to-github/evals.json   # Eval scenarios (prompt + expected behavior)
