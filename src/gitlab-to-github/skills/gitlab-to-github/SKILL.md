@@ -9,7 +9,7 @@ description: >
   the full lifecycle: repo cleanup, GitHub push, Quay OIDC, CI translation,
   and GitLab mirroring.
 user-invocable: true
-compatibility: "Requires glab CLI, gh CLI, yq, and curl. Optional: QUAY_API_TOKEN for Quay robot setup. Requires ldapsearch and a valid Kerberos ticket (kinit) for CODEOWNERS username resolution — see the ldap skill."
+compatibility: "Requires glab CLI, gh CLI, yq, curl, and ldapsearch (with a Kerberos ticket for CODEOWNERS lookups — see the ldap skill). Optional: QUAY_API_TOKEN for Quay robot setup."
 allowed-tools:
   - Bash(git *)
   - Bash(glab *)
@@ -65,6 +65,7 @@ Phase 1: Cleanup .............. <status>  ← you are here (on active phase)
   ✓ Add LICENSE (Apache-2.0)
   · Update README                         ← next step
   · Update GitLab self-references
+  · Update CODEOWNERS for GitHub usernames
   · Commit with Signed-off-by
   · MR submitted and merged
 Phase 2: GitHub Setup ......... <status>
