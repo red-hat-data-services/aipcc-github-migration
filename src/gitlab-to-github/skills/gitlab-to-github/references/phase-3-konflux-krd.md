@@ -5,10 +5,9 @@ Only runs when the user confirmed `konflux_managed: true` in Phase 0 — this ph
 This phase covers infrastructure changes in `konflux-release-data` (the GitOps repo for Konflux tenant resources — Applications, Components, ImageRepositories — synced to the cluster by ArgoCD). This is separate from the repo being migrated itself.
 
 **This phase is additive and incremental.** It covers ImageRepository preservation,
-PMC/`.tekton` regeneration, and the first half of the Component
-delete-and-recreate sequence: removing the old Components and pausing until the
-GitOps deletion is confirmed. Component recreation belongs to a later change
-based on freshly updated `main` after this checkpoint completes.
+PMC/`.tekton` regeneration, and the Component delete-and-recreate sequence:
+removing the old Components, confirming the GitOps deletion, recreating the
+Components with GitHub sources, and verifying PAC after ArgoCD applies them.
 
 ## Items
 
@@ -26,6 +25,11 @@ based on freshly updated `main` after this checkpoint completes.
   3. **ImageRepositories:** run `kubectl get imagerepository -n <tenant> <saved-image-repository-names>` and verify every saved ImageRepository remains. Check each saved object still has `image-controller.appstudio.redhat.com/skip-repository-deletion: "true"`; save this as `image_repositories_survived_confirmed`.
   4. **GitLab PAC hooks:** query the source project with `glab api --hostname <source-host> 'projects/<url-encoded-source-path>/hooks' --paginate --output ndjson`. Empty output means no hooks remain. To distinguish an empty result from an API problem, retry with `-i --output json` and expect HTTP 200 with `[]`. The source project's Settings → Webhooks page is an equivalent check. Save this as `pac_webhooks_removed_confirmed`.
   Record each confirmation in the manifest, mark Step 6b complete only when all required checks pass, and only then begin a new change from refreshed `main`.
+- **[automatable] Recreate Components with GitHub source URLs** — After Step 6b is complete, refresh the KRD default branch and create a new feature branch. Recreate only the selected source Component YAMLs with their existing application/component names, target GitHub URL, and selected branch revisions. Do not add `spec.repository-settings`; `build-single.sh` mirrors the source Component into `auto-generated/` and does not add that field itself.
+- **[automatable] Regenerate and validate recreated Component manifests** — Run `tenants-config/build-single.sh <tenant>`. Confirm the generated diff contains the recreated Components and expected Kustomize wiring only; it must not add `repository-settings` or unrelated ImageRepository changes. Run `git diff --check` and the affected Kustomize build.
+- **[automatable] Commit, push, and open the Component-recreation MR** — Base the branch on freshly updated `main`, record the base commit and MR details in `konflux_krd.step_6c`, use `git commit -s`, and wait for explicit approval before pushing.
+- **[human] Wait for Component-recreation MR merge and ArgoCD sync** — Set `konflux_krd.step_6c.status: waiting` and save `waiting_for: "Component-recreation MR merge and ArgoCD sync"`. Do not run the PAC gate until the user confirms the MR is merged and ArgoCD has applied it.
+- **[human] Verify PAC onboarding before source PRs/MRs** — Run the generic checks in the PAC verification section below. The KRD recreation MR is necessarily opened before PAC exists; after it is merged and synced, do not raise subsequent source-repository PRs/MRs until the persisted PAC gate is confirmed.
 
 The KRD track is independent of the Quay OIDC track. Quay OIDC configures
 GitHub Actions authentication for a repository's own workflows; it does not
@@ -55,12 +59,120 @@ konflux_krd:
     components_deleted_confirmed: false
     image_repositories_survived_confirmed: false
     pac_webhooks_removed_confirmed: false
+  step_6c:
+    status: waiting
+    branch: <component-recreation-branch>
+    base_commit: <commit used to start this MR>
+    commit: <component-recreation-commit>
+    mr_url: <merge-request-url>
+    waiting_for: "Component-recreation MR merge and ArgoCD sync"
+    component_files: [<recreated source Component paths>]
+    image_repository_files: [<matching ImageRepository paths>]
+    argo_sync_confirmed: false
+    components_available_confirmed: false
+    image_repositories_ready_confirmed: false
+    pac_components_enabled_confirmed: false
+    pac_repository_confirmed: false
+    github_app_or_webhook_confirmed: false
+    pipeline_definitions_confirmed: false
+    pac_pull_request_verified: false
+    pac_push_verified: false
+    source_mrs_allowed: false
+    notes: ""
 ```
 
 On a later invocation, read this state first. If the MR is still pending, report
 that and stop. If it is merged but ArgoCD has not been confirmed, ask the human
 to perform the checks above and stop. Never recreate the branch, commit, or MR
 because the session was resumed.
+
+## Step 6c: Component recreation and PAC verification
+
+### Recreate the Components
+
+Begin only after the Step 6b deletion gate is complete. Refresh the KRD
+default branch before creating the independent recreation branch/MR. Preserve
+the discovered application and component names and set each Component's
+`spec.source.git.url` and `spec.source.git.revision` to the target GitHub repo
+and selected branch.
+
+Do not include `spec.repository-settings` in the recreated Components. The KRD
+build script copies fields from the source Component to the flat generated
+manifest; it does not synthesize `repository-settings`. If the source block is
+omitted, it will also be absent from the generated output.
+
+### Generated PAC configuration PRs
+
+Step 4 already regenerated the repository's branch-specific `.tekton/`
+PipelineRun files. Therefore, a later `configure-pac` GitHub configuration PR
+that adds those pipeline files is a duplicate proposal for this migration and
+must not be merged. Compare its paths, names, CEL triggers, and parameters with
+the existing Step 4 files before closing or documenting the duplicate.
+`configure-pac-no-mr` does not
+create such a configuration PR; the required `.tekton/` files must already be
+present on that branch.
+
+### Generic PAC verification after ArgoCD sync
+
+After the Component-recreation MR is merged and ArgoCD is synced, ask the
+human to substitute the migration-specific values and run:
+
+```bash
+NAMESPACE=<tenant>
+GITHUB_REPO=<github-org>/<repo>
+
+for component in <component-1> <component-2>; do
+  kubectl get component "$component" -n "$NAMESPACE" \
+    -o go-template='{{.metadata.name}} url={{.spec.source.git.url}} revision={{.spec.source.git.revision}} image={{.spec.containerImage}} status={{index .metadata.annotations "build.appstudio.openshift.io/status"}}{{"\n"}}'
+done
+```
+
+Every recreated Component must have the target GitHub URL and revision, a
+populated `spec.containerImage`, and a successful PAC status. Verify the
+ImageRepositories and their controller state:
+
+```bash
+for image_repository in <image-repository-1> <image-repository-2>; do
+  kubectl get imagerepository "$image_repository" -n "$NAMESPACE" \
+    -o go-template='{{.metadata.name}} update={{index .metadata.annotations "image-controller.appstudio.redhat.com/update-component-image"}} skip={{index .metadata.annotations "image-controller.appstudio.redhat.com/skip-repository-deletion"}} state={{.status.state}}{{"\n"}}'
+done
+```
+
+The ImageRepositories must be ready and have the annotations required by the
+cluster's Image Controller. Then verify the PAC Repository resource. Its name
+does not have to match a Component name; match its URL instead:
+
+```bash
+kubectl get repository -n "$NAMESPACE" \
+  -o custom-columns=NAME:.metadata.name,URL:.spec.url
+```
+
+Verify GitHub event delivery without printing webhook secrets:
+
+```bash
+gh api --paginate "repos/$GITHUB_REPO/hooks" \
+  --jq '.[] | {id,active,events,url:.config.url}'
+```
+
+Also check the repository's Installed GitHub Apps page. An empty repository
+hook response is not by itself a failure when the Konflux GitHub App owns the
+event delivery. Confirm the selected branches contain the intended `.tekton/`
+files and inspect their trigger expressions:
+
+```bash
+for branch in <branch-1> <branch-2>; do
+  echo "=== $branch"
+  gh api "repos/$GITHUB_REPO/contents/.tekton?ref=$branch" --jq '.[].name'
+done
+```
+
+Before allowing subsequent source-repository PRs/MRs, run one controlled
+smoke PR/MR that changes a path matched by the existing PAC trigger and confirm
+that the expected PipelineRun is created. A docs-only change will not trigger
+a pipeline when the `.tekton/` definition has a path filter. Record the
+result in `pac_pull_request_verified`; set `source_mrs_allowed: true` only
+after the required checks pass. A tag-triggered push test is optional and is
+recorded in `pac_push_verified`.
 
 ## Automation Details
 
@@ -183,6 +295,7 @@ By the end of this phase, the user should expect to see (and the skill should li
 2. One MR on the PMC repo — the config URL update(s), covering whichever branches were selected.
 3. One MR **per regenerated branch** on the repo being migrated — e.g. a separate MR for `main`'s `.tekton` regeneration and another for `3.5`'s, since each targets a different base branch.
 4. One MR on `konflux-release-data` — removal of the selected Component resources, followed by an ArgoCD sync checkpoint before any recreation MR.
+5. One MR on `konflux-release-data` — recreation of the selected Component resources, followed by an ArgoCD/PAC verification checkpoint before subsequent source PRs/MRs.
 
 Track each of these in the manifest with its branch, MR URL (once created), and status, so a resumed session can report exactly what's outstanding rather than the user having to reconstruct it from memory.
 
@@ -191,6 +304,9 @@ Track each of these in the manifest with its branch, MR URL (once created), and 
 - **This is production infrastructure.** `konflux-release-data` changes are GitOps-synced by ArgoCD to a real Konflux cluster. Always wait for confirmed sync, never assume merge means applied.
 - **The manifest is the pause/resume record.** Persist the exact resource lists and external references before waiting; never infer them from a later checkout or repeat an already-created MR.
 - **Refresh `main` between sequential MRs.** A successful merge changes the base for the next change; fetch and fast-forward before branching again.
+- **Do not add `repository-settings` during Component recreation.** It is not synthesized by KRD generation and is not part of the default GitHub recreation.
+- **Do not merge duplicate PAC configuration PRs.** Step 4 already generated the branch `.tekton/` files; compare any later generated configuration PR before merging it.
+- **PAC must be verified before subsequent source PRs/MRs.** Component existence and ArgoCD health alone do not prove that Image Controller and PAC onboarding completed.
 - **Don't guess the annotation key or API group.** The annotation used here (`image-controller.appstudio.redhat.com/skip-repository-deletion`) matches the `appstudio.redhat.com/v1alpha1` ImageRepository API group. If the target `konflux-release-data` has since moved to a newer API group, the annotation key changes too (`build.konflux-ci.dev/skip-repository-deletion`). Verify against an existing ImageRepository YAML in the target repo, or the official docs, before applying.
 - **No rollback once a Component is deleted without this annotation synced.** If the annotation wasn't live on the cluster before Component deletion, the Quay repository (and its tag history) is gone for good. Verify sync before proceeding, every time.
 

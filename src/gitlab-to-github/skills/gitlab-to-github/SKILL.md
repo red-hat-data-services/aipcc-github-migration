@@ -171,6 +171,14 @@ For each phase (cleanup → github_setup → konflux_krd → quay_oidc → ci �
    Component deletion is gated by the ImageRepository preservation annotation
    and ArgoCD confirmation, not by GitHub Actions' Quay authentication.
 
+   For Konflux Step 6c, the Component-recreation KRD MR must be opened before
+   PAC can be verified. After that MR merges and ArgoCD applies it, do not
+   recommend or create subsequent source-repository PRs/MRs until the persisted
+   PAC verification gate confirms Component images, PAC status, the target
+   Repository resource, GitHub event delivery, and a successful controlled
+   PipelineRun smoke test. A generated PAC configuration PR is not a reason to
+   merge duplicate `.tekton/` files that Step 4 already generated.
+
 4. **After each item**, update the manifest: set item `status` to `complete`, `waiting`, `skipped`, or `blocked`. A waiting item pauses the phase; do not mark the phase complete or continue to a dependent item.
 
 5. **After all items in a phase**, set the phase `status` to `complete` and present the next phase
