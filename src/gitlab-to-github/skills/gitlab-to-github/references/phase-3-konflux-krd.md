@@ -4,11 +4,13 @@ Only runs when the user confirmed `konflux_managed: true` in Phase 0 — this ph
 
 This phase covers infrastructure changes in `konflux-release-data` (the GitOps repo for Konflux tenant resources — Applications, Components, ImageRepositories — synced to the cluster by ArgoCD). This is separate from the repo being migrated itself.
 
-**This phase is additive and incremental.** Only the ImageRepository preservation step is covered so far. The delete-and-recreate sequence for Components (removing the GitLab-pointing Components and recreating them pointing at GitHub) will be added once proven end-to-end on a real migration.
+**This phase is additive and incremental.** The ImageRepository preservation step and the PMC/`.tekton` regeneration steps are covered so far. The delete-and-recreate sequence for Components (removing the GitLab-pointing Components and recreating them pointing at GitHub) will be added once proven end-to-end on a real migration.
 
 ## Items
 
 - **[automatable] Annotate ImageRepositories to survive Component deletion** — Add `image-controller.appstudio.redhat.com/skip-repository-deletion: "true"` to every ImageRepository YAML for this component in `konflux-release-data`. This prevents Konflux from deleting the underlying Quay image repository when the owning Component is later deleted and recreated pointing at GitHub. Safe to do at any time — it has no dependency on the GitHub repo existing yet. **Check current state first** (see below) — if the annotation is already present on every ImageRepository for this component, mark the item `complete` without making any changes or asking to run anything.
+- **[automatable] Update the PMC config URL(s)** — Update the `url:` field for this component in its Product Management Configs (PMC) entry, from the GitLab URL to the target GitHub URL. A product can have multiple branch-specific config files (one per release branch); ask the user which branches to update now — don't assume "all of them," since EA/pre-release branches are often deferred. See "Automation Details" below.
+- **[automatable] Regenerate `.tekton` via PMT** — For each branch whose PMC config was just updated, regenerate that branch's `.tekton/` PipelineRun files using the Product Management Tool (PMT) and commit the result on that branch. Requires the PMC config update (previous item) to already reflect the GitHub URL for that branch. See "Automation Details" below for the exact procedure, including a required PMT-template-currency check and a hard-won gotcha about branch/MR staleness.
 
 ## Automation Details
 
@@ -65,9 +67,54 @@ git add tenants-config/cluster/.../imagerepositories/*.yaml \
 git commit -s -m "<TICKET>: Preserve <component> image repos before GitHub migration"
 git push -u origin <branch>
 ```
-Open the MR on `konflux-release-data` and wait for it to merge **and for ArgoCD to sync** before proceeding to any future step that deletes a Component. Confirming sync matters — deleting a Component before this annotation is live on the cluster will delete the underlying Quay repository along with it.
+Open the MR on `konflux-release-data` (don't just push and leave it — actually create it, e.g. via `glab mr create`) and wait for it to merge **and for ArgoCD to sync** before proceeding to any future step that deletes a Component. Confirming sync matters — deleting a Component before this annotation is live on the cluster will delete the underlying Quay repository along with it.
 
 **If a change was already committed but not yet merged/synced** (e.g. resuming a prior session), don't recreate the change — check for an open MR or unmerged branch first, and pick up from there (wait for merge/sync) rather than duplicating the work.
+
+### Updating the PMC config URL(s)
+
+The product's onboarding config lives in the PMC repo (e.g. `aipcc-product-management-configs`), typically one `config.yaml` per release branch (e.g. `<product>/main/config.yaml`, `<product>/3.5/config.yaml`). Find the component's `url:` field and update it:
+
+```bash
+grep -rn "url: https://gitlab" <product>/*/config.yaml
+```
+
+Ask the user which branches to update now — a product can have several release/EA branches, and it's common to migrate the active ones (e.g. `main`, the current GA branch) while deferring older or EA-only branches. Don't assume every branch config should change in the same pass.
+
+Commit each branch's config change (can be a single commit covering multiple branch configs if updated together), push, and **open the MR** on the PMC repo.
+
+### Regenerating `.tekton` via PMT
+
+**First, verify PMT's templates are current** — don't assume the fix you need is already merged. Check `product-management-tool`'s `main` branch for GitHub-awareness in the pipelinerun templates (e.g. `grep -n "github.com" templates/pipelinerun/*.yaml.j2`), and pull latest before running. If the templates still hardcode GitLab-only assumptions, that's a prerequisite gap to raise, not something to work around locally.
+
+PMT expects to write directly into a real, already-cloned git checkout of the target repo — not a scratch/output directory — and does a repository health check (including a branch-mismatch warning, non-blocking) before generating. To point it at a local checkout without restructuring your directory layout, symlink the expected `{org}/{repo}` path to your actual clone:
+
+```bash
+mkdir -p /tmp/pmt-output/<github-org>
+ln -sf /path/to/actual/local/checkout /tmp/pmt-output/<github-org>/<repo>
+```
+
+Then, **for each branch being regenerated**, check out that exact branch in the real checkout first (the generated files must reflect that branch's own component name/revision), then run PMT against that branch's config:
+
+```bash
+cd /path/to/actual/local/checkout && git checkout <branch>
+cd /path/to/product-management-tool
+GITLAB_REPO_PATH=/tmp/pmt-output uv run python onboard-product.py \
+  --config /path/to/pmc/<product>/<branch>/config.yaml --mode pipelinerun
+```
+
+Review the diff before committing — expect the GitHub URL annotation and pipelineRef changes, but also watch for **incidental changes** unrelated to the migration (e.g. label or param drift the PMC config already had queued up that the previously-committed `.tekton` file simply predates). These are legitimate — full regeneration re-renders the whole file — but call them out to the user rather than letting them slide through silently.
+
+Commit each regenerated branch's `.tekton/` changes **on a branch based on that same target branch** (a `main`-based commit belongs on a branch cut from `main`; a `3.5`-based commit belongs on a branch cut from `3.5`), push, and **open the MR**.
+
+### Expected MRs for this phase
+
+By the end of this phase, the user should expect to see (and the skill should list these explicitly in its status output, not just imply them):
+1. One MR on `konflux-release-data` — the ImageRepository annotation.
+2. One MR on the PMC repo — the config URL update(s), covering whichever branches were selected.
+3. One MR **per regenerated branch** on the repo being migrated — e.g. a separate MR for `main`'s `.tekton` regeneration and another for `3.5`'s, since each targets a different base branch.
+
+Track each of these in the manifest with its branch, MR URL (once created), and status, so a resumed session can report exactly what's outstanding rather than the user having to reconstruct it from memory.
 
 ## Gotchas
 

@@ -11,6 +11,7 @@ quay_repo: ""   # populated by Phase 0 if container push detected
 jira_ticket: ""
 wave: 1  # 1 (simple/no CI), 2 (real CI), 3 (complex multi-arch/cross-repo)
 license_decision: null  # "add" | "skip" | null (asked in Phase 1 if no license detected)
+push_tags: false  # set true only after verifying local tags are the intended tags to push
 konflux_managed: false  # user-confirmed in Phase 0 (not just detected.has_tekton) — set true to enable the konflux_krd phase
 
 # Phase 0 detected state (populated automatically)
@@ -52,6 +53,7 @@ phases:
       - { name: "Repo exists in target org", status: pending, type: human }
       - { name: "Add github remote", status: pending, type: automatable }
       - { name: "Push main to GitHub", status: pending, type: automatable }
+      - { name: "Push tags to GitHub", status: pending, type: automatable }
   konflux_krd:
     status: pending  # skipped entirely unless konflux_managed is true
     items:

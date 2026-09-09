@@ -123,6 +123,7 @@ For each phase (cleanup → github_setup → konflux_krd → quay_oidc → ci �
    - `detected.has_ci == false` → skip `ci` phase
    - `detected.has_container_push == false` → skip `quay_oidc` phase
    - `detected.github_state == "has_content"` → skip push step in `github_setup`
+   - `push_tags != true` → skip "Push tags to GitHub" in `github_setup`
    - `detected.has_license == true && detected.license_type == "Apache-2.0"` → skip license item in `cleanup`
    - Otherwise, no existing license is detected — this is **not** an auto-skip. Ask the user
      whether to add the Apache-2.0 license or skip it (e.g. internal-only repo, license handled

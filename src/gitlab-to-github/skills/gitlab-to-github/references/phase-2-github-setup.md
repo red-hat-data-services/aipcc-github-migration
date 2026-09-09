@@ -10,6 +10,7 @@ Push the cleaned-up code from GitLab to the target GitHub org.
   Skip if repo already exists. If Phase 0 already prompted the form submission, just confirm the repo is now available: `gh repo view <target_org>/<repo> --json isEmpty 2>/dev/null`
 - **[automatable] Add github remote** — Add the GitHub repo as a second remote. Skip if `detected.github_state == "has_content"`.
 - **[automatable] Push main to GitHub** — Push main branch (and any release branches) to GitHub. Skip if `detected.github_state == "has_content"`.
+- **[automatable] Push tags to GitHub** — Push tags only when `push_tags: true`. Skip when `push_tags` is false or absent.
 
 ## Automation Details
 
@@ -46,10 +47,28 @@ for branch in $(yq '.detected.branches_to_keep[]' .claude/migrations/$REPO/manif
 done
 ```
 
+Before pushing kept branches, ensure each local branch is current with its
+GitLab `origin/<branch>` counterpart. This phase refreshes `main` explicitly;
+it assumes other kept branches have already been updated locally.
+
+### Pushing tags
+
+This is opt-in through `push_tags: true` in the migration manifest. Before
+enabling it, ensure the local clone contains exactly the tags intended for
+GitHub. `git fetch --tags` adds tags but does not remove local tags that were
+deleted from GitLab, so review and remove stale local tags first.
+
+```bash
+git fetch origin --tags
+git tag -l
+git push github --tags
+```
+
 ### Verifying the push
 
 ```bash
 gh repo view <target_org>/<repo> --json defaultBranchRef,isEmpty
+git ls-remote --tags github
 ```
 
 ## Gotchas
