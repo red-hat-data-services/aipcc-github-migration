@@ -20,7 +20,12 @@ based on freshly updated `main` after this checkpoint completes.
 - **[automatable] Regenerate and validate KRD output** — Run `tenants-config/build-single.sh <tenant>` from the KRD checkout. Review the diff and require that generated changes are limited to the discovered Components, their Kustomize wiring, and generated Component manifests. Reject unrelated generated changes and any ImageRepository changes. Run `git diff --check` and a Kustomize build for the affected application before committing.
 - **[automatable] Commit, push, and open the Component-removal MR** — Refresh the KRD repository's default branch from its remote before creating the feature branch. Record the base commit, branch, commit, and MR URL in `konflux_krd.step_6b`; use `git commit -s`. Show the exact push command and wait for explicit approval before pushing. Open the MR and save its URL rather than leaving a pushed branch untracked.
 - **[human] Wait for merge and ArgoCD sync** — After the MR is open, set `konflux_krd.step_6b.status: waiting` and save `waiting_for: "Component-removal MR merge and ArgoCD sync"`. Stop. Do not start Component recreation, even if the MR is approved, until it is merged and the user confirms ArgoCD has applied it.
-- **[human] Confirm the deletion gate** — Ask the user to check the ArgoCD application and source Git host. They must confirm: the application is Synced and Healthy; every saved Component name is absent; every saved ImageRepository remains present; and the PAC webhooks for the old source repository are gone. Record these confirmations, mark Step 6b complete, and only then begin a new change from refreshed `main`.
+- **[human] Confirm the deletion gate** — Ask the user to check the ArgoCD application, live cluster, ImageRepositories, and source Git host. They may use all of the following checks:
+  1. **ArgoCD UI:** confirm the application is `Synced` and `Healthy`; the Resource Tree contains none of the saved Component names; and the sync operation details show those Components as pruned/deleted. Save this as `argo_sync_confirmed` and `argo_prune_confirmed`.
+  2. **Kubernetes Component resources:** run `kubectl get components.appstudio.redhat.com -n <tenant> -o name` and verify the saved Components are absent. For an individual check, `kubectl get component <name> -n <tenant>` must return `NotFound`. If the resource alias is unavailable, use `kubectl api-resources | grep -i component` to find the served resource name. Save this as `components_deleted_confirmed`.
+  3. **ImageRepositories:** run `kubectl get imagerepository -n <tenant> <saved-image-repository-names>` and verify every saved ImageRepository remains. Check each saved object still has `image-controller.appstudio.redhat.com/skip-repository-deletion: "true"`; save this as `image_repositories_survived_confirmed`.
+  4. **GitLab PAC hooks:** query the source project with `glab api --hostname <source-host> 'projects/<url-encoded-source-path>/hooks' --paginate --output ndjson`. Empty output means no hooks remain. To distinguish an empty result from an API problem, retry with `-i --output json` and expect HTTP 200 with `[]`. The source project's Settings → Webhooks page is an equivalent check. Save this as `pac_webhooks_removed_confirmed`.
+  Record each confirmation in the manifest, mark Step 6b complete only when all required checks pass, and only then begin a new change from refreshed `main`.
 
 The KRD track is independent of the Quay OIDC track. Quay OIDC configures
 GitHub Actions authentication for a repository's own workflows; it does not
@@ -45,6 +50,11 @@ konflux_krd:
     waiting_for: "Component-removal MR merge and ArgoCD sync"
     component_files: [<discovered source Component paths>]
     image_repository_files: [<discovered ImageRepository paths>]
+    argo_sync_confirmed: false
+    argo_prune_confirmed: false
+    components_deleted_confirmed: false
+    image_repositories_survived_confirmed: false
+    pac_webhooks_removed_confirmed: false
 ```
 
 On a later invocation, read this state first. If the MR is still pending, report

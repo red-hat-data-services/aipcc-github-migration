@@ -32,7 +32,9 @@ konflux_krd:
     image_repository_files: []
     annotation_sync_confirmed: false
     argo_sync_confirmed: false
+    argo_prune_confirmed: false
     components_deleted_confirmed: false
+    image_repositories_survived_confirmed: false
     pac_webhooks_removed_confirmed: false
     notes: ""
 
