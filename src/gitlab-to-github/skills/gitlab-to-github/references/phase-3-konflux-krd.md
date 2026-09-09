@@ -4,13 +4,53 @@ Only runs when the user confirmed `konflux_managed: true` in Phase 0 — this ph
 
 This phase covers infrastructure changes in `konflux-release-data` (the GitOps repo for Konflux tenant resources — Applications, Components, ImageRepositories — synced to the cluster by ArgoCD). This is separate from the repo being migrated itself.
 
-**This phase is additive and incremental.** The ImageRepository preservation step and the PMC/`.tekton` regeneration steps are covered so far. The delete-and-recreate sequence for Components (removing the GitLab-pointing Components and recreating them pointing at GitHub) will be added once proven end-to-end on a real migration.
+**This phase is additive and incremental.** It covers ImageRepository preservation,
+PMC/`.tekton` regeneration, and the first half of the Component
+delete-and-recreate sequence: removing the old Components and pausing until the
+GitOps deletion is confirmed. Component recreation belongs to a later change
+based on freshly updated `main` after this checkpoint completes.
 
 ## Items
 
 - **[automatable] Annotate ImageRepositories to survive Component deletion** — Add `image-controller.appstudio.redhat.com/skip-repository-deletion: "true"` to every ImageRepository YAML for this component in `konflux-release-data`. This prevents Konflux from deleting the underlying Quay image repository when the owning Component is later deleted and recreated pointing at GitHub. Safe to do at any time — it has no dependency on the GitHub repo existing yet. **Check current state first** (see below) — if the annotation is already present on every ImageRepository for this component, mark the item `complete` without making any changes or asking to run anything.
 - **[automatable] Update the PMC config URL(s)** — Update the `url:` field for this component in its Product Management Configs (PMC) entry, from the GitLab URL to the target GitHub URL. A product can have multiple branch-specific config files (one per release branch); ask the user which branches to update now — don't assume "all of them," since EA/pre-release branches are often deferred. See "Automation Details" below.
 - **[automatable] Regenerate `.tekton` via PMT** — For each branch whose PMC config was just updated, regenerate that branch's `.tekton/` PipelineRun files using the Product Management Tool (PMT) and commit the result on that branch. Requires the PMC config update (previous item) to already reflect the GitHub URL for that branch. See "Automation Details" below for the exact procedure, including a required PMT-template-currency check and a hard-won gotcha about branch/MR staleness.
+- **[human] Confirm the ImageRepository preservation annotation is live** — Before deleting any Component, require confirmation from live cluster state or the ArgoCD UI that every discovered ImageRepository still exists with the skip-deletion annotation. A healthy GitOps application alone is not sufficient if the resource details have not been checked. Save this confirmation in `konflux_krd.step_6b.annotation_sync_confirmed`.
+- **[automatable] Remove the old Component resources** — In the configured KRD checkout, discover the source Component YAMLs for the selected application and branch set; exclude `auto-generated/` from discovery. Save the exact Component and matching ImageRepository paths in the manifest. Remove only the Component YAMLs. Remove a now-empty component Kustomization and its parent `components` reference; if a Kustomization contains other resources, remove only the targeted Component entry. Do not remove or edit ImageRepository YAMLs.
+- **[automatable] Regenerate and validate KRD output** — Run `tenants-config/build-single.sh <tenant>` from the KRD checkout. Review the diff and require that generated changes are limited to the discovered Components, their Kustomize wiring, and generated Component manifests. Reject unrelated generated changes and any ImageRepository changes. Run `git diff --check` and a Kustomize build for the affected application before committing.
+- **[automatable] Commit, push, and open the Component-removal MR** — Refresh the KRD repository's default branch from its remote before creating the feature branch. Record the base commit, branch, commit, and MR URL in `konflux_krd.step_6b`; use `git commit -s`. Show the exact push command and wait for explicit approval before pushing. Open the MR and save its URL rather than leaving a pushed branch untracked.
+- **[human] Wait for merge and ArgoCD sync** — After the MR is open, set `konflux_krd.step_6b.status: waiting` and save `waiting_for: "Component-removal MR merge and ArgoCD sync"`. Stop. Do not start Component recreation, even if the MR is approved, until it is merged and the user confirms ArgoCD has applied it.
+- **[human] Confirm the deletion gate** — Ask the user to check the ArgoCD application and source Git host. They must confirm: the application is Synced and Healthy; every saved Component name is absent; every saved ImageRepository remains present; and the PAC webhooks for the old source repository are gone. Record these confirmations, mark Step 6b complete, and only then begin a new change from refreshed `main`.
+
+The KRD track is independent of the Quay OIDC track. Quay OIDC configures
+GitHub Actions authentication for a repository's own workflows; it does not
+protect Konflux-owned ImageRepositories. A Component deletion can cascade to its
+owned ImageRepository if the preservation annotation was not applied and synced,
+but it must not affect another application's Quay resources when the discovered
+resource names and owner references are checked.
+
+### Persisted Step 6b checkpoint
+
+The skill must treat the following as a resumable state machine, not transient
+conversation context:
+
+```yaml
+konflux_krd:
+  step_6b:
+    status: waiting
+    branch: <component-removal-branch>
+    base_commit: <commit used to start this MR>
+    commit: <component-removal-commit>
+    mr_url: <merge-request-url>
+    waiting_for: "Component-removal MR merge and ArgoCD sync"
+    component_files: [<discovered source Component paths>]
+    image_repository_files: [<discovered ImageRepository paths>]
+```
+
+On a later invocation, read this state first. If the MR is still pending, report
+that and stop. If it is merged but ArgoCD has not been confirmed, ask the human
+to perform the checks above and stop. Never recreate the branch, commit, or MR
+because the session was resumed.
 
 ## Automation Details
 
@@ -38,6 +78,19 @@ find tenants-config/cluster -path "*/<tenant>/<app>/*/imagerepositories/*.yaml" 
   -not -path "*/auto-generated/*"
 ```
 A component with multiple release branches (e.g. `main`, `3.5`, `3.5-ea1`) has one ImageRepository file per branch — annotate all of them.
+
+For Component deletion, discover the corresponding source files under the same
+application tree, excluding `auto-generated/`:
+
+```bash
+find tenants-config/cluster \
+  -path "*/<tenant>/<application>/*/components/*.yaml" \
+  -not -path "*/auto-generated/*" -print
+```
+
+Do not embed a product name, tenant, cluster, branch count, or fixed Component
+list in the skill. If the application or KRD checkout is ambiguous, ask the
+user to supply it and persist the answer in the manifest.
 
 ### Adding the annotation
 
@@ -68,6 +121,12 @@ git commit -s -m "<TICKET>: Preserve <component> image repos before GitHub migra
 git push -u origin <branch>
 ```
 Open the MR on `konflux-release-data` (don't just push and leave it — actually create it, e.g. via `glab mr create`) and wait for it to merge **and for ArgoCD to sync** before proceeding to any future step that deletes a Component. Confirming sync matters — deleting a Component before this annotation is live on the cluster will delete the underlying Quay repository along with it.
+
+For the Component-removal MR, use a separate feature branch based on a freshly
+fast-forwarded default branch. Save the branch, base commit, commit, and MR URL
+before entering the waiting state. After that MR merges, refresh the default
+branch again before creating any follow-up branch or MR; do not stack the next
+change on the pre-merge feature branch.
 
 **If a change was already committed but not yet merged/synced** (e.g. resuming a prior session), don't recreate the change — check for an open MR or unmerged branch first, and pick up from there (wait for merge/sync) rather than duplicating the work.
 
@@ -113,12 +172,15 @@ By the end of this phase, the user should expect to see (and the skill should li
 1. One MR on `konflux-release-data` — the ImageRepository annotation.
 2. One MR on the PMC repo — the config URL update(s), covering whichever branches were selected.
 3. One MR **per regenerated branch** on the repo being migrated — e.g. a separate MR for `main`'s `.tekton` regeneration and another for `3.5`'s, since each targets a different base branch.
+4. One MR on `konflux-release-data` — removal of the selected Component resources, followed by an ArgoCD sync checkpoint before any recreation MR.
 
 Track each of these in the manifest with its branch, MR URL (once created), and status, so a resumed session can report exactly what's outstanding rather than the user having to reconstruct it from memory.
 
 ## Gotchas
 
 - **This is production infrastructure.** `konflux-release-data` changes are GitOps-synced by ArgoCD to a real Konflux cluster. Always wait for confirmed sync, never assume merge means applied.
+- **The manifest is the pause/resume record.** Persist the exact resource lists and external references before waiting; never infer them from a later checkout or repeat an already-created MR.
+- **Refresh `main` between sequential MRs.** A successful merge changes the base for the next change; fetch and fast-forward before branching again.
 - **Don't guess the annotation key or API group.** The annotation used here (`image-controller.appstudio.redhat.com/skip-repository-deletion`) matches the `appstudio.redhat.com/v1alpha1` ImageRepository API group. If the target `konflux-release-data` has since moved to a newer API group, the annotation key changes too (`build.konflux-ci.dev/skip-repository-deletion`). Verify against an existing ImageRepository YAML in the target repo, or the official docs, before applying.
 - **No rollback once a Component is deleted without this annotation synced.** If the annotation wasn't live on the cluster before Component deletion, the Quay repository (and its tag history) is gone for good. Verify sync before proceeding, every time.
 

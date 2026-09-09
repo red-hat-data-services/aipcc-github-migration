@@ -77,7 +77,7 @@ Phase 6: Mirroring ............ <status>
 Next step: <first incomplete item in active phase>
 ```
 
-  Status values: `complete`, `pending`, `skip (reason)`, `blocked`, `optional`
+  Status values: `complete`, `pending`, `waiting`, `skip (reason)`, `blocked`, `optional`
   Show item-level detail (✓/·) only for the active phase — collapsed for others.
   Mark the active phase with `← you are here` and the next item with `← next step`.
 
@@ -151,7 +151,27 @@ For each phase (cleanup → github_setup → konflux_krd → quay_oidc → ci �
      "Run `/gitlab-to-github` again when that's done — I'll pick up right here."
    - **Blocked items**: If user says something is blocked, mark it `status: blocked` with a note, move on
 
-4. **After each item**, update the manifest: set item `status` to `complete`, `skipped`, or `blocked`
+   A `waiting` item is a persisted checkpoint, not a completed item. Save the
+   external reference, the current gate, and the next required confirmation in
+   the manifest before stopping. On the next invocation, re-read that state and
+   resume from the checkpoint; do not recreate a branch, commit, or MR that is
+   already recorded.
+
+   Before starting an independent change or MR in any repository:
+   - Confirm the worktree is clean and identify the repository's default branch
+     (normally `main`). Do not discard uncommitted work to make it clean.
+   - Fetch the remote and fast-forward the local default branch from its remote
+     counterpart (`git fetch origin --prune`, then `git merge --ff-only origin/main`;
+     use the configured default branch if it is not `main`).
+   - Create the new feature branch from that refreshed branch. Record the base
+     commit in the manifest when the change belongs to a multi-MR sequence.
+
+   The Konflux/KRD track and the Quay OIDC track are independent. Do not delay
+   the KRD Component-removal checkpoint until Quay OIDC is complete. KRD
+   Component deletion is gated by the ImageRepository preservation annotation
+   and ArgoCD confirmation, not by GitHub Actions' Quay authentication.
+
+4. **After each item**, update the manifest: set item `status` to `complete`, `waiting`, `skipped`, or `blocked`. A waiting item pauses the phase; do not mark the phase complete or continue to a dependent item.
 
 5. **After all items in a phase**, set the phase `status` to `complete` and present the next phase
 
@@ -166,6 +186,8 @@ These are non-negotiable:
 - **Verify mirroring works before declaring migration complete** — the downstream CI must pass
 - **All git commits must include `Signed-off-by:`** — use `git commit -s`
 - **Pin GitHub Actions to SHA digests**, not version tags
+- **Refresh the default branch before each independent MR** — never base the next
+  change in a sequential migration on a stale pre-merge branch
 
 ## AIPCC Defaults
 
@@ -212,7 +234,7 @@ Typical durations (based on past migrations):
 |-------|-----------------|
 | Cleanup + MR review | 1-2 sessions |
 | GitHub repo + push | 5 minutes |
-| Konflux/KRD reconfiguration | small MR per item + ArgoCD sync wait (minutes to tens of minutes); budget more for later items in this phase that touch Components, not just ImageRepositories |
+| Konflux/KRD reconfiguration | small MR per item + ArgoCD sync wait (minutes to tens of minutes); budget more for Component delete/recreate checkpoints, not just ImageRepositories |
 | Quay OIDC federation | 30 minutes |
 | GitHub Actions CI | 1-2 sessions |
 | GitLab mirroring | small MR + up to ~45 min for first sync |

@@ -14,6 +14,28 @@ license_decision: null  # "add" | "skip" | null (asked in Phase 1 if no license 
 push_tags: false  # set true only after verifying local tags are the intended tags to push
 konflux_managed: false  # user-confirmed in Phase 0 (not just detected.has_tekton) — set true to enable the konflux_krd phase
 
+# State for the Konflux/KRD delete-and-recreate sequence. Resource lists are
+# discovered for the current migration; do not hard-code a product or cluster.
+konflux_krd:
+  repo_path: ""
+  cluster: ""
+  tenant: ""
+  application: ""
+  step_6b:
+    status: pending  # pending | waiting | complete | blocked
+    branch: ""
+    base_commit: ""
+    commit: ""
+    mr_url: ""
+    waiting_for: ""
+    component_files: []
+    image_repository_files: []
+    annotation_sync_confirmed: false
+    argo_sync_confirmed: false
+    components_deleted_confirmed: false
+    pac_webhooks_removed_confirmed: false
+    notes: ""
+
 # Phase 0 detected state (populated automatically)
 detected:
   has_ci: false
@@ -58,6 +80,11 @@ phases:
     status: pending  # skipped entirely unless konflux_managed is true
     items:
       - { name: "Annotate ImageRepositories to survive Component deletion", status: pending, type: automatable }
+      - { name: "Confirm ImageRepository annotations are live before Component deletion", status: pending, type: human }
+      - { name: "Remove Component resources and regenerate KRD manifests", status: pending, type: automatable }
+      - { name: "Commit, push, and open the Component-removal MR", status: pending, type: automatable }
+      - { name: "Wait for Component-removal MR merge and ArgoCD sync", status: pending, type: human }
+      - { name: "Confirm Components and source-host PAC webhooks are gone", status: pending, type: human }
   quay_oidc:
     status: pending
     items:
