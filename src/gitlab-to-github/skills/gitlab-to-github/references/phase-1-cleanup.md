@@ -72,7 +72,7 @@ GitLab-style references with their GitHub equivalents. Common patterns:
 | `gitlab>GITLAB_PATH//file.json` | `github>GITHUB_ORG/REPO//file.json` |
 | `local>GITLAB_PATH` | `local>GITHUB_ORG/REPO` |
 | `gitlab.com/GITLAB_PATH` | `github.com/GITHUB_ORG/REPO` |
-| `project: 'GITLAB_PATH'` (in CI includes) | n/a — handled in Phase 4 CI translation |
+| `project: 'GITLAB_PATH'` (in CI includes) | n/a — handled in Phase 5 CI translation |
 
 Show the user a diff of each file before committing. Some references may be intentionally
 cross-platform (e.g., a GitLab-hosted preset consumed by GitLab-side repos) — ask before changing

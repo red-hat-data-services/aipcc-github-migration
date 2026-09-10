@@ -1,4 +1,4 @@
-# Phase 5: GitLab Pull Mirroring
+# Phase 6: GitLab Pull Mirroring
 
 Set up GitLab to pull-mirror the GitHub repo so downstream `include: project:` references keep working.
 

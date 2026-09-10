@@ -11,6 +11,52 @@ quay_repo: ""   # populated by Phase 0 if container push detected
 jira_ticket: ""
 wave: 1  # 1 (simple/no CI), 2 (real CI), 3 (complex multi-arch/cross-repo)
 license_decision: null  # "add" | "skip" | null (asked in Phase 1 if no license detected)
+push_tags: false  # set true only after verifying local tags are the intended tags to push
+konflux_managed: false  # user-confirmed in Phase 0 (not just detected.has_tekton) — set true to enable the konflux_krd phase
+
+# State for the Konflux/KRD delete-and-recreate sequence. Resource lists are
+# discovered for the current migration; do not hard-code a product or cluster.
+konflux_krd:
+  repo_path: ""
+  cluster: ""
+  tenant: ""
+  application: ""
+  step_6b:
+    status: pending  # pending | waiting | complete | blocked
+    branch: ""
+    base_commit: ""
+    commit: ""
+    mr_url: ""
+    waiting_for: ""
+    component_files: []
+    image_repository_files: []
+    annotation_sync_confirmed: false
+    argo_sync_confirmed: false
+    argo_prune_confirmed: false
+    components_deleted_confirmed: false
+    image_repositories_survived_confirmed: false
+    pac_webhooks_removed_confirmed: false
+    notes: ""
+  step_6c:
+    status: pending  # pending | waiting | complete | blocked
+    branch: ""
+    base_commit: ""
+    commit: ""
+    mr_url: ""
+    waiting_for: ""
+    component_files: []
+    image_repository_files: []
+    argo_sync_confirmed: false
+    components_available_confirmed: false
+    image_repositories_ready_confirmed: false
+    pac_components_enabled_confirmed: false
+    pac_repository_confirmed: false
+    github_app_or_webhook_confirmed: false
+    pipeline_definitions_confirmed: false
+    pac_pull_request_verified: false
+    pac_push_verified: false
+    source_mrs_allowed: false
+    notes: ""
 
 # Phase 0 detected state (populated automatically)
 detected:
@@ -51,6 +97,21 @@ phases:
       - { name: "Repo exists in target org", status: pending, type: human }
       - { name: "Add github remote", status: pending, type: automatable }
       - { name: "Push main to GitHub", status: pending, type: automatable }
+      - { name: "Push tags to GitHub", status: pending, type: automatable }
+  konflux_krd:
+    status: pending  # skipped entirely unless konflux_managed is true
+    items:
+      - { name: "Annotate ImageRepositories to survive Component deletion", status: pending, type: automatable }
+      - { name: "Confirm ImageRepository annotations are live before Component deletion", status: pending, type: human }
+      - { name: "Remove Component resources and regenerate KRD manifests", status: pending, type: automatable }
+      - { name: "Commit, push, and open the Component-removal MR", status: pending, type: automatable }
+      - { name: "Wait for Component-removal MR merge and ArgoCD sync", status: pending, type: human }
+      - { name: "Confirm Components and source-host PAC webhooks are gone", status: pending, type: human }
+      - { name: "Recreate Components with GitHub source URLs", status: pending, type: automatable }
+      - { name: "Regenerate and validate recreated Component manifests", status: pending, type: automatable }
+      - { name: "Commit, push, and open the Component-recreation MR", status: pending, type: automatable }
+      - { name: "Wait for Component-recreation MR merge and ArgoCD sync", status: pending, type: human }
+      - { name: "Verify PAC onboarding before subsequent source PRs/MRs", status: pending, type: human }
   quay_oidc:
     status: pending
     items:

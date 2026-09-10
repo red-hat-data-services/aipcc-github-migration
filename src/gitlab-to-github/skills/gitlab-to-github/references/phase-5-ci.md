@@ -1,4 +1,4 @@
-# Phase 4: GitHub Actions CI
+# Phase 5: GitHub Actions CI
 
 Translate the GitLab CI pipeline to GitHub Actions. Skip this entire phase if `detected.has_ci == false`.
 
