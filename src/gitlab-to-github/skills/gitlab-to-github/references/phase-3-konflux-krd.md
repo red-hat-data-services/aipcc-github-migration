@@ -11,7 +11,7 @@ Components with GitHub sources, and verifying PAC after ArgoCD applies them.
 
 ## Items
 
-- **[automatable] Annotate ImageRepositories to survive Component deletion** — Add `image-controller.appstudio.redhat.com/skip-repository-deletion: "true"` to every ImageRepository YAML for this component in `konflux-release-data`. This prevents Konflux from deleting the underlying Quay image repository when the owning Component is later deleted and recreated pointing at GitHub. Safe to do at any time — it has no dependency on the GitHub repo existing yet. **Check current state first** (see below) — if the annotation is already present on every ImageRepository for this component, mark the item `complete` without making any changes or asking to run anything.
+- **[automatable] Annotate ImageRepositories to survive Component deletion** — Add `image-controller.appstudio.redhat.com/skip-repository-deletion: "true"` to every ImageRepository YAML belonging to the Components being migrated in `konflux-release-data`. One GitLab repo can map to many Konflux Components — often one per image variant per release branch — so discover the full set by source URL (see "Locating the KRD resources"); never assume the migration is a single Component. This prevents Konflux from deleting the underlying Quay image repository when the owning Component is later deleted and recreated pointing at GitHub. Safe to do at any time — it has no dependency on the GitHub repo existing yet. **Check current state first** (see below) — if the annotation is already present on every ImageRepository for this component, mark the item `complete` without making any changes or asking to run anything.
 - **[automatable] Update the PMC config URL(s)** — Update the `url:` field for this component in its Product Management Configs (PMC) entry, from the GitLab URL to the target GitHub URL. A product can have multiple branch-specific config files (one per release branch); ask the user which branches to update now — don't assume "all of them," since EA/pre-release branches are often deferred. See "Automation Details" below.
 - **[automatable] Regenerate `.tekton` via PMT** — For each branch whose PMC config was just updated, regenerate that branch's `.tekton/` PipelineRun files using the Product Management Tool (PMT) and commit the result on that branch. Requires the PMC config update (previous item) to already reflect the GitHub URL for that branch. See "Automation Details" below for the exact procedure, including a required PMT-template-currency check and a hard-won gotcha about branch/MR staleness.
 - **[human] Confirm the ImageRepository preservation annotation is live** — Before deleting any Component, require confirmation from live cluster state or the ArgoCD UI that every discovered ImageRepository still exists with the skip-deletion annotation. A healthy GitOps application alone is not sufficient if the resource details have not been checked. Save this confirmation in `konflux_krd.step_6b.annotation_sync_confirmed`.
@@ -178,17 +178,27 @@ recorded in `pac_push_verified`.
 
 ### Check current state before doing anything
 
-Someone may have already applied this annotation — a previous invocation of this skill, a manual fix, or another engineer working the same migration. Always check before proposing a change:
+Someone may have already applied this annotation — a previous invocation of this skill, a manual fix, or another engineer working the same migration. Always check against `origin/main` (not the local checkout, which may be stale) before proposing a change — and check every tenant/application the discovery step found, because a clean result for one application says nothing about the others:
 
 ```bash
-grep -L "skip-repository-deletion" tenants-config/cluster/<cluster>/tenants/<tenant>/<app>/*/imagerepositories/*.yaml
+git grep -L "skip-repository-deletion" origin/main -- <tenant/app paths from discovery> \
+  | grep "/imagerepositories/" | grep -v auto-generated
 ```
 
-- If this returns **no files** (every ImageRepository already has the annotation), mark the item `status: complete` immediately, note in the manifest that it was found already applied, and move to the next item — do not ask the user to "run this," there is nothing to run.
+- If this returns **no files** across the entire discovered scope (every ImageRepository already has the annotation), mark the item `status: complete` immediately, note in the manifest that it was found already applied, and move to the next item — do not ask the user to "run this," there is nothing to run.
 - If it returns **some files**, only those need the annotation added — don't touch the ones that already have it.
 - If it returns **all files**, proceed with the normal flow below.
 
 ### Locating the KRD resources
+
+Start from the migrating repo's URL, not a product name — a product name can span several tenants, while the repo URL maps exactly to the Components in scope:
+
+```bash
+git grep -lF "<source-repo-url>" origin/main -- tenants-config/cluster \
+  | grep "/components/" | grep -v auto-generated
+```
+
+Group the results by cluster, tenant, and application. One repo commonly maps to many Components (one per image variant per release branch), and a product's repos occasionally span more than one tenant — confirm the tenant set with the user before annotating.
 
 ImageRepository resources live in `konflux-release-data`, under:
 ```
@@ -199,7 +209,8 @@ Find them via:
 find tenants-config/cluster -path "*/<tenant>/<app>/*/imagerepositories/*.yaml" \
   -not -path "*/auto-generated/*"
 ```
-A component with multiple release branches (e.g. `main`, `3.5`, `3.5-ea1`) has one ImageRepository file per branch — annotate all of them.
+Run this `find` from the feature branch you cut from the fetched `origin/main` — not a stale worktree — so path expansion sees the same files the discovery step did. If an application mixes Components from several source repos, select ImageRepositories by their `appstudio.redhat.com/component` label instead of annotating the whole application.
+A component with multiple release branches (e.g. `main`, `3.5`, `3.5-ea1`) has one ImageRepository file per branch — annotate all of them. Unlike PMC URL updates, the annotation is inert until a Component is deleted, so annotate every branch — including EA or otherwise-deferred ones — rather than asking which branches to defer.
 
 For Component deletion, discover the corresponding source files under the same
 application tree, excluding `auto-generated/`:
@@ -233,6 +244,13 @@ cd tenants-config
 ./build-single.sh <tenant>
 ```
 Commit both the edited source files and the regenerated `auto-generated/` files together.
+
+For bulk changes, validate mechanically instead of eyeballing hundreds of files:
+```bash
+git diff --name-only origin/main..HEAD
+git diff origin/main..HEAD | grep "^[+-]" | grep -v "^[+-][+-]" | sort | uniq -c
+```
+An annotation-only change must show exactly one added line (the annotation) repeated 2N times — N source files plus N generated mirrors — and no removed lines. The name-only list must contain exactly those 2N files and nothing outside the target application or its auto-generated mirror.
 
 ### Committing and opening the MR
 
