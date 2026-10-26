@@ -63,23 +63,28 @@
     {
       "id": 4,
       "prompt": "Let's migrate the central-linter repo. It has no LICENSE file.",
-      "expected_output": "Should run Phase 0, detect has_license: false. Since no license is detected, should ASK the user whether to add Apache-2.0 rather than adding it automatically, and record the answer as license_decision so re-runs don't re-ask.",
+      "expected_output": "Should run Phase 0 and detect has_license: false. The missing license is not a migration blocker. Phase 1 should offer Apache-2.0 as an optional choice, record add or skip in license_decision, and continue without creating LICENSE if the user skips.",
       "files": [],
       "assertions": [
-        { "text": "Does not add a LICENSE file without first asking the user (add vs skip)", "type": "logic_check" },
-        { "text": "Records the user's license choice as license_decision (add or skip) in the manifest", "type": "content_check" }
+        { "text": "Treats a missing LICENSE as optional and does not block the migration", "type": "logic_check" },
+        { "text": "Offers Apache-2.0 as an explicit add-or-skip choice without adding it automatically", "type": "logic_check" },
+        { "text": "Records the user's choice as license_decision and continues when the user skips", "type": "content_check" }
       ]
     },
     {
       "id": 5,
       "prompt": "Let's migrate the central-linter repo. It has a CODEOWNERS file with a few GitLab usernames in it.",
-      "expected_output": "Should run Phase 0, detect has_codeowners: true. Should use the ldap skill (ldapsearch against Red Hat IPA LDAP) to resolve each GitLab username to its GitHub username and show a diff before committing the rewritten CODEOWNERS file.",
+      "expected_output": "Should detect the CODEOWNERS source path, translate each individual GitLab owner through LDAP, handle groups separately as verified target-organization teams, validate the resulting GitHub file location, path patterns, and owner syntax, and show the complete diff before committing. Any unresolved owner blocks the commit and is returned to the user for correction. After the file reaches the GitHub base branch, check the CODEOWNERS errors endpoint.",
       "files": [],
       "assertions": [
         { "text": "Detects has_codeowners: true and does not skip the CODEOWNERS item", "type": "logic_check" },
-        { "text": "Uses ldapsearch / the ldap skill to resolve GitLab usernames to GitHub usernames for CODEOWNERS", "type": "logic_check" },
-        { "text": "Shows a diff of the rewritten CODEOWNERS file before committing", "type": "output_check" },
-        { "text": "Flags any CODEOWNERS handle that has no LDAP/GitHub match instead of silently dropping it", "type": "logic_check" }
+        { "text": "Uses ldapsearch / the ldap skill to resolve individual GitLab owners to GitHub usernames", "type": "logic_check" },
+        { "text": "Resolves group owners separately and emits @org/team only after confirming the target team and repository access", "type": "logic_check" },
+        { "text": "Moves .gitlab/CODEOWNERS to a GitHub-supported location and accounts for GitHub file precedence", "type": "logic_check" },
+        { "text": "Validates CODEOWNERS path patterns and @username or @org/team owner syntax, including unsupported negation and character ranges", "type": "logic_check" },
+        { "text": "Does not commit while any owner is unresolved or invalid", "type": "logic_check" },
+        { "text": "Shows the complete rewritten file diff before committing", "type": "output_check" },
+        { "text": "Checks the GitHub CODEOWNERS errors endpoint after the file reaches the base branch", "type": "logic_check" }
       ]
     },
     {
@@ -96,25 +101,14 @@
       ]
     },
     {
-      "id": 4,
-      "prompt": "Let's migrate the central-linter repo. It has no LICENSE file.",
-      "expected_output": "Should run Phase 0, detect has_license: false. Since no license is detected, should ASK the user whether to add Apache-2.0 rather than adding it automatically, and record the answer as license_decision so re-runs don't re-ask.",
+      "id": 8,
+      "prompt": "Migrate an internal repo to GitHub. I have not specified a target organization.",
+      "expected_output": "Should default target_github_org to red-hat-data-services and target_github_repo to red-hat-data-services/<repo>. It may mention opendatahub-io as an explicit alternative for upstream/community repos.",
       "files": [],
       "assertions": [
-        { "text": "Does not add a LICENSE file without first asking the user (add vs skip)", "type": "logic_check" },
-        { "text": "Records the user's license choice as license_decision (add or skip) in the manifest", "type": "content_check" }
-      ]
-    },
-    {
-      "id": 5,
-      "prompt": "Let's migrate the central-linter repo. It has a CODEOWNERS file with a few GitLab usernames in it.",
-      "expected_output": "Should run Phase 0, detect has_codeowners: true. Should use the ldap skill (ldapsearch against Red Hat IPA LDAP) to resolve each GitLab username to its GitHub username and show a diff before committing the rewritten CODEOWNERS file.",
-      "files": [],
-      "assertions": [
-        { "text": "Detects has_codeowners: true and does not skip the CODEOWNERS item", "type": "logic_check" },
-        { "text": "Uses ldapsearch / the ldap skill to resolve GitLab usernames to GitHub usernames for CODEOWNERS", "type": "logic_check" },
-        { "text": "Shows a diff of the rewritten CODEOWNERS file before committing", "type": "output_check" },
-        { "text": "Flags any CODEOWNERS handle that has no LDAP/GitHub match instead of silently dropping it", "type": "logic_check" }
+        { "text": "Uses red-hat-data-services as the default target organization", "type": "content_check" },
+        { "text": "Builds target_github_repo from the chosen organization and repo name", "type": "content_check" },
+        { "text": "Does not silently substitute opendatahub-io when the user has not requested it", "type": "logic_check" }
       ]
     }
   ]

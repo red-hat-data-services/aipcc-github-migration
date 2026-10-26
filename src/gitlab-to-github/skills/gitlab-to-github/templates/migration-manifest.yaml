@@ -4,8 +4,8 @@
 
 repo: REPO_NAME
 source_gitlab: GITLAB_PATH
-target_github_org: TARGET_ORG  # opendatahub-io (upstream/community) or red-hat-data-services (downstream/internal)
-target_github_repo: TARGET_ORG/REPO_NAME
+target_github_org: red-hat-data-services  # default; use opendatahub-io for upstream/community
+target_github_repo: red-hat-data-services/REPO_NAME
 quay_org: ""    # populated by Phase 0 if container push detected
 quay_repo: ""   # populated by Phase 0 if container push detected
 jira_ticket: ""
@@ -67,7 +67,7 @@ detected:
   has_license: false
   license_type: null
   has_codeowners: false
-  codeowners_path: null   # CODEOWNERS | .gitlab/CODEOWNERS | docs/CODEOWNERS
+  codeowners_path: null   # .github/CODEOWNERS | CODEOWNERS | docs/CODEOWNERS | .gitlab/CODEOWNERS
   github_state: absent  # absent | empty | has_content
   quay_repo_exists: false
   gitlab_self_references: []  # files containing gitlab>REPO_PATH or similar self-referencing patterns

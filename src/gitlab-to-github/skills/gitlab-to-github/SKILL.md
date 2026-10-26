@@ -62,7 +62,7 @@ Target:  <target_github_repo>
 Ticket:  <jira_ticket or "not set">
 
 Phase 1: Cleanup .............. <status>  ← you are here (on active phase)
-  ✓ Add LICENSE (Apache-2.0)
+  · Add LICENSE (Apache-2.0, optional)
   · Update README                         ← next step
   · Update GitLab self-references
   · Update CODEOWNERS for GitHub usernames
@@ -91,7 +91,7 @@ Next step: <first incomplete item in active phase>
 
 Ask two questions:
 1. "What's the GitLab repo URL or path?" (e.g., `gitlab.com/redhat/rhel-ai/ci-cd/central-linter` or just `redhat/rhel-ai/ci-cd/central-linter`)
-2. "Which GitHub org?" (`opendatahub-io` for upstream/community, `red-hat-data-services` for downstream/internal)
+2. "Which GitHub org?" (default `red-hat-data-services`; choose `opendatahub-io` for upstream/community)
 
 Then:
 - Parse the GitLab input: strip `https://gitlab.com/` prefix if present, extract the repo name (last path segment) and full GitLab path
@@ -99,7 +99,7 @@ Then:
 - Fill in the template with:
   - `repo`: the repo name (last segment of the GitLab path)
   - `source_gitlab`: the full GitLab project path
-  - `target_github_org`: user's choice
+  - `target_github_org`: user's choice, or `red-hat-data-services` if they accept the default
   - `target_github_repo`: `<org>/<repo>`
   - Leave `quay_org` and `quay_repo` empty — Phase 0 populates them if container push is detected
 - Create `.claude/migrations/<repo>/` directory
@@ -124,12 +124,10 @@ For each phase (cleanup → github_setup → konflux_krd → quay_oidc → ci �
    - `detected.has_container_push == false` → skip `quay_oidc` phase
    - `detected.github_state == "has_content"` → skip push step in `github_setup`
    - `push_tags != true` → skip "Push tags to GitHub" in `github_setup`
-   - `detected.has_license == true && detected.license_type == "Apache-2.0"` → skip license item in `cleanup`
-   - Otherwise, no existing license is detected — this is **not** an auto-skip. Ask the user
-     whether to add the Apache-2.0 license or skip it (e.g. internal-only repo, license handled
-     elsewhere, GPL repo pending legal review — see Gotchas in `phase-1-cleanup.md`). Record the
-     answer in `license_decision` (`add` or `skip`) so re-runs don't ask again. If `skip`, mark
-     the license item `status: skipped` with the user's reason.
+   - `detected.has_license == true && detected.license_type == "Apache-2.0"` → skip the optional license item in `cleanup`
+   - Otherwise, the license item is optional and must not block migration. Ask whether the user
+     wants to add Apache-2.0 or skip it; record `license_decision` (`add` or `skip`) so re-runs
+     don't ask again. If skipped, save the user's reason and continue with cleanup.
    - `detected.gitlab_self_references` is empty → skip "Update GitLab self-references" item in `cleanup`
    - `detected.has_codeowners == false` → skip "Update CODEOWNERS for GitHub usernames" item in `cleanup`
    - `detected.has_container_push == false` → skip "Scope id-token to push job" in `ci` phase
@@ -204,7 +202,7 @@ These are baked into the manifest template. Override at init if needed.
 | Setting | Default |
 |---------|---------|
 | GitLab path | asked at init |
-| Target GitHub org | `opendatahub-io` or `red-hat-data-services` (asked at init) |
+| Target GitHub org | `red-hat-data-services` (default); `opendatahub-io` for upstream/community |
 | Quay org | `aipcc-cicd` (only if container push detected) |
 | License (optional, if added) | Apache-2.0 |
 | App-interface role | `rhoai/dev` |

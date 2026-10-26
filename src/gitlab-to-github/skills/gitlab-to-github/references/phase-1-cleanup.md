@@ -4,7 +4,7 @@ All changes happen on a feature branch in the GitLab repo. One commit per change
 
 ## Items
 
-- **[automatable] Add LICENSE (Apache-2.0)** — Not always required. Skip automatically if Phase 0 detected an existing Apache-2.0 license. Otherwise, ask the user whether to add one — see "Deciding on the license" below. Commit separately.
+- **[optional] Add LICENSE (Apache-2.0)** — Never block a migration on a license. Skip automatically if Phase 0 detected an existing Apache-2.0 license. Otherwise, ask whether the user wants one — see "Deciding on the license" below. If skipped, record the reason and continue.
 - **[automatable] Update README** — Fix any GitLab-specific URLs or workflow references that won't apply post-migration.
 - **[automatable] Update GitLab self-references** — Replace `gitlab>REPO_PATH` preset references, `local>` paths, and similar with their GitHub equivalents. Skip if `detected.gitlab_self_references` is empty. Show diff and ask before changing cross-platform references.
 - **[automatable] Update CODEOWNERS for GitHub usernames** — Resolve each GitLab username/handle in CODEOWNERS to its GitHub username via LDAP and rewrite the file. Skip if `detected.has_codeowners` is false.
@@ -26,8 +26,8 @@ git checkout -b cleanup/migration-prep
 
 ### Deciding on the license
 
-If `detected.has_license` is false (or the existing license isn't Apache-2.0), don't add it
-automatically — ask the user first:
+If `detected.has_license` is false (or the existing license isn't Apache-2.0), the migration can
+continue without adding a license. Ask whether the user wants to add Apache-2.0:
 
 ```
 No Apache-2.0 LICENSE detected. Add one?
@@ -123,26 +123,43 @@ ldapsearch -ZZ -H "ldap:///dc=ipa%2Cdc=redhat%2Cdc=com" -QLLL \
 on their Red Hat account — pull the GitHub handle out of the `Github->https://github.com/USER`
 value.
 
-For each handle in CODEOWNERS:
-- If a GitHub handle is found, replace `@gitlab-handle` with `@github-handle` in place.
-- If no LDAP match is found, or the user has no `Github->` social URL on file, leave the original
-  handle in place, comment it out or flag it inline (e.g. `# TODO: no GitHub handle found for
-  @gitlab-handle`), and list it for the user in the phase summary — don't silently drop reviewers.
+For each owner token in CODEOWNERS:
+- Resolve person owners through LDAP and replace each GitLab handle with its confirmed GitHub username.
+- Resolve group owners separately. GitHub team owners use `@<target_github_org>/<team-slug>`; add
+  one only after confirming the team exists in the target organization and has repository write access.
+- If any owner cannot be resolved, keep the migration item blocked and ask the user for a valid
+  GitHub user or team. Do not leave an invalid active owner, guess a team slug, or silently drop a reviewer.
+
+Validate the resulting file before showing the diff:
+- Put it at `.github/CODEOWNERS`, `CODEOWNERS`, or `docs/CODEOWNERS`. If the source is
+  `.gitlab/CODEOWNERS`, move it to a supported location. If multiple CODEOWNERS files exist,
+  consolidate the intended rules so GitHub's precedence does not hide entries.
+- Each active line must contain a GitHub-supported path pattern followed by one or more owners in
+  `@username` or `@org/team` form. Preserve comments and intended patterns; check path case against
+  the repository because GitHub treats paths as case-sensitive. Keep multiple owners for one
+  pattern on the same line; later matching patterns take precedence.
+- GitHub CODEOWNERS does not support `!` negation or `[ ]` character ranges. Rewrite unsupported
+  patterns with equivalent supported patterns before committing.
+- Confirm every person/team owner has write access to the target repository. Once the file is on
+  the GitHub base branch, check `gh api "repos/$TARGET_GITHUB_ORG/$REPO_NAME/codeowners/errors"`;
+  resolve any reported syntax or owner errors before marking the item complete.
 
 Show the full diff before committing.
 
+Set `CODEOWNERS_SOURCE` to the detected source path and `CODEOWNERS_DESTINATION` to the chosen
+GitHub-supported location. Use the same path for both when no move is needed.
+
 ```bash
-git add CODEOWNERS  # or .gitlab/CODEOWNERS, docs/CODEOWNERS per detected.codeowners_path
+git add -A -- "$CODEOWNERS_SOURCE" "$CODEOWNERS_DESTINATION"
 git commit -s -m "chore: update CODEOWNERS with GitHub usernames"
 ```
 
-If the file lived at `.gitlab/CODEOWNERS`, move it to the repo root (`CODEOWNERS`, or
-`.github/CODEOWNERS`) as part of this commit — GitHub doesn't read `.gitlab/`.
+Show the full diff, including any file move, before committing.
 
 ### Opening the MR
 
 ```bash
-glab mr create --title "Migration prep: add license, policy, and README updates" \
+glab mr create --title "Migration prep: update CODEOWNERS, policy, and README" \
   --description "Part of GitLab → GitHub migration"
 ```
 
@@ -150,9 +167,9 @@ glab mr create --title "Migration prep: add license, policy, and README updates"
 
 - **Separate commits**: Each change gets its own commit. Don't squash cleanup into one commit — reviewers expect granular changes.
 - **Branch naming**: Use `cleanup/migration-prep` or similar — makes the MR purpose obvious.
-- **GPL-licensed repos**: Two repos (product-management-tool, product-management-configs) are GPL-3.0. These may need legal review before changing to Apache-2.0. If `detected.license_type` is `GPL-3.0`, flag this to the user instead of auto-replacing.
-- **License is optional now**: Don't assume Apache-2.0 gets added by default — always ask when no license is detected, and respect `license_decision: skip`.
-- **CODEOWNERS group entries**: Some GitLab CODEOWNERS entries may be groups (`@team-name`), not individual users — LDAP user lookups won't resolve these. Leave group references as-is and flag them for manual review.
+- **GPL-licensed repos**: Two repos (product-management-tool, product-management-configs) are GPL-3.0. Never replace an existing license. If a user asks to add Apache-2.0 to a GPL repo, flag the possible legal review and wait for direction.
+- **License is optional**: A missing Apache-2.0 license is not a migration blocker. Respect `license_decision: skip` and do not re-ask on resume.
+- **CODEOWNERS group entries**: GitLab groups are not necessarily GitHub teams. Resolve them separately and use a target-org team slug only after confirming it exists and has write access.
 
 ## Troubleshooting
 

@@ -8,7 +8,7 @@ across sessions.
 
 Walks you through the full migration lifecycle in 6 phases:
 
-1. **Repo Cleanup** — license, README, branch pruning, self-reference updates
+1. **Repo Cleanup** — optional license, README, branch pruning, self-reference updates
 2. **GitHub Setup** — create repo, push branches
 3. **Konflux/KRD Reconfiguration** — Konflux Component/ImageRepository resources in `konflux-release-data` for Tekton-managed container build repos (skipped unless confirmed Konflux-managed)
 4. **Quay OIDC** — federated identity for container pushes (skipped if no container builds)
@@ -34,7 +34,7 @@ The skill ships with defaults for the AIPCC productization team:
 
 - GitLab prefix: `redhat/rhel-ai/ci-cd/`
 - Quay org: `aipcc-cicd`
-- Target GitHub org: `opendatahub-io` (upstream/community) or `red-hat-data-services` (downstream/internal), asked at init
+- Target GitHub org: `red-hat-data-services` by default; choose `opendatahub-io` for upstream/community repos
 - Maintainers list pre-populated
 
 These are set in the manifest template and SKILL.md — adjust for your org.
